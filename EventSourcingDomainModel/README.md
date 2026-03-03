@@ -35,6 +35,23 @@ Unlike traditional CRUD, we don't `UPDATE Accounts SET Balance = X`. Instead:
 - **Domain Tests**: Verify that business rules produce the correct events.
 - **Application Tests**: Use Mocks to ensure the service coordinates between Domain and Infrastructure correctly.
 
+## 🚀 How to Run & Test
+
+This project is a Console Application that demonstrates the Event Sourcing flow (Rehydrate -> Act -> Append).
+
+### 1. Prerequisites
+* [.NET 8.0 SDK](https://dotnet.microsoft.com) or later.
+* Visual Studio 2022 (recommended) or VS Code.
+
+### 2. Running the Application
+From the project root directory, run:
+```bash
+dotnet run --project src/EventSourcingDomainModelApp.csproj
+```
+
+
+---
+
 ## Diagrams
 
 ### Activity Flow: Command Execution
