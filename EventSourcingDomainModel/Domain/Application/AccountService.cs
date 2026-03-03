@@ -21,7 +21,7 @@ namespace EventSourcingDomainModelApp.Application
             var account = CreditAccount.Open(id, owner, limit);
 
 
-            await _eventStore.SaveEventsAsync(id, account.GetUncommittedChanges(), -1);
+            await _eventStore.SaveEventsAsync(id, account.GetUncommittedChanges(), 0);
 
             account.MarkChangesAsCommitted();
         }   
@@ -32,11 +32,13 @@ namespace EventSourcingDomainModelApp.Application
 
             var account = new CreditAccount();
             account.LoadFromHistory(events);
+            var originalVersion = account.Version;
 
             account.Deposit(amount);
-            await _eventStore.SaveEventsAsync(id, account.GetUncommittedChanges(), account.Version-1);
+            var changes = account.GetUncommittedChanges().ToList();
+            await _eventStore.SaveEventsAsync(id, changes, originalVersion);
 
-            account.MarkChangesAsCommitted();
+            //account.MarkChangesAsCommitted();
         }
 
         public async Task HandleWithdrawal(Guid id, decimal amount)
@@ -45,10 +47,12 @@ namespace EventSourcingDomainModelApp.Application
 
             var account = new CreditAccount();
             account.LoadFromHistory(events);
-
+            var originalVersion = account.Version;
             account.Withdraw(amount);
+            var changes = account.GetUncommittedChanges().ToList();
+            await _eventStore.SaveEventsAsync(id, changes, originalVersion);
 
-            await _eventStore.SaveEventsAsync(id, account.GetUncommittedChanges(), account.Version-1);
+            //account.MarkChangesAsCommitted();
         }
 
         public async Task<decimal> DisplayBalance(Guid id)

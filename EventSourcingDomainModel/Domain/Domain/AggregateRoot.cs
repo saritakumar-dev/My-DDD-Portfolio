@@ -9,7 +9,7 @@ namespace EventSourcingDomainModelApp.Domain
     public abstract class AggregateRoot
     {
         public Guid Id { get; protected set; }
-        public int Version { get; protected set; } = -1;
+        public int Version { get; protected set; } 
 
         private readonly List<DomainEvent> _changes = new();
 

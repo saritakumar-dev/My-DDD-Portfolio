@@ -23,7 +23,7 @@ namespace EventSourcingDomainModelApp.Infrastructure
             if(!_store.ContainsKey(@aggregateId))
                 _store[aggregateId]= new List<DomainEvent>();
 
-            var currentVersion = _store[aggregateId].Count - 1;
+            var currentVersion = _store[aggregateId].Count;
             if(currentVersion != expectedVersion)
                 throw new Exception("CONCURRENCY CONFLICT: The account state has changed. Please retry.");
 
