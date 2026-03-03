@@ -46,7 +46,7 @@ This project is a Console Application that demonstrates the Event Sourcing flow 
 ### 2. Running the Application
 From the project root directory, run:
 ```bash
-dotnet run --project src/EventSourcingDomainModelApp.csproj
+dotnet run --project Domain/EventSourcingDomainModelApp.csproj
 ```
 
 

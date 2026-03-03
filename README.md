@@ -21,7 +21,7 @@ A collection of projects exploring tactical and strategic DDD patterns, clean ar
 
 ## 🛠️ Global Setup
 Each project is self-contained. To run a specific project:
-1. Navigate to the project folder: `cd 01-CreditAccount-ES`
+1. Navigate to the project folder: `cd EventSourcingDomainModel`
 2. Restore dependencies: `dotnet restore`
 3. Run tests: `dotnet test`
 
