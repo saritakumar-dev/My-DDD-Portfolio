@@ -27,6 +27,13 @@ To test time-dependent rules (like the 50% reassignment rule), we injected `.NET
 *   **In Production:** Uses the real system clock.
 *   **In Tests:** Uses a `FakeTimeProvider` to "fast-forward" time and verify deadlines in milliseconds.
 
+### 5. Value Converters (The Mapping Bridge)
+Since MySQL does not natively understand C# `records` like `TicketId` or `Priority`, we implemented **Value Converters** in the Infrastructure layer.
+*   **Deconstruction:** When saving, the converter extracts the inner `Guid` or `string` from the Value Object.
+*   **Rehydration:** When loading from MySQL, the converter automatically "rebuilds" the rich Value Object from the raw database value.
+*   **Benefit:** This allows the Domain to use strongly-typed objects (preventing "Primitive Obsession") while keeping the Database schema simple and standard.
+
+
 ---
 
 ## 🛠️ Technical Stack & Patterns
