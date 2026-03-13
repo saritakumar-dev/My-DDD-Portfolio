@@ -13,7 +13,7 @@ namespace EVentSourceDomainAppTestProject
     public class AccountServiceTests
     {
         private readonly string _name = "John Doe";
-       
+
         [Fact]
         public async Task HandleAmountDeposit_ShouldLoadAndSaveEvents()
         {
@@ -26,7 +26,7 @@ namespace EVentSourceDomainAppTestProject
                      .ReturnsAsync(new List<DomainEvent> { new AccountOpened(id, _name, 100, DateTime.UtcNow) });
 
             var service = new AccountService(mockStore.Object);
-            
+
             // Act
             await service.HandleAmountDeposit(id, 50);
 
@@ -34,8 +34,25 @@ namespace EVentSourceDomainAppTestProject
             mockStore.Verify(s => s.SaveEventsAsync(
                 id,
                 It.Is<IEnumerable<DomainEvent>>(events => events.Any(e => e is MoneyDeposited)),
-               1), 
+               1),
                 Times.Once);
+        }
+
+        [Fact]
+        public async Task HandleAmountDeposit_ShouldThrowExceptionForClosedAccounts()
+        {
+            var id = Guid.NewGuid();
+            var mockStore = new Mock<IEventStore>();
+            mockStore.Setup(s => s.LoadEventsAsync(id))
+                     .ReturnsAsync(new List<DomainEvent> { new AccountOpened(id, _name, 100, DateTime.UtcNow) });
+
+            mockStore.Setup(s => s.LoadEventsAsync(id))
+                     .ReturnsAsync(new List<DomainEvent> { new AccountClosed(id, DateTime.UtcNow) });
+
+            var service = new AccountService(mockStore.Object);
+
+            var exception = await Assert.ThrowsAsync<InvalidOperationException>(() => service.HandleAmountDeposit(id, 50));
+            Assert.Contains("Cannot deposit to a closed account ", exception.Message);
         }
 
         [Fact]
@@ -44,8 +61,8 @@ namespace EVentSourceDomainAppTestProject
             var id = Guid.NewGuid();
             var mockStore = new Mock<IEventStore>();
 
-            mockStore.Setup(s=>s.LoadEventsAsync(id))
-                     .ReturnsAsync(new List<DomainEvent> { new AccountOpened(id, _name, 100, DateTime.UtcNow)});
+            mockStore.Setup(s => s.LoadEventsAsync(id))
+                     .ReturnsAsync(new List<DomainEvent> { new AccountOpened(id, _name, 100, DateTime.UtcNow) });
 
             mockStore.Setup(s => s.LoadEventsAsync(id))
                       .ReturnsAsync(new List<DomainEvent> { new MoneyDeposited(id, 300, DateTime.Now) });
@@ -55,9 +72,9 @@ namespace EVentSourceDomainAppTestProject
 
             await service.HandleWithdrawal(id, 150);
 
-            mockStore.Verify(s=>s.SaveEventsAsync(
-                id, 
-                It.Is<IEnumerable<DomainEvent>>(events=>events.Any(e => e is WithdrawalPerformed)),
+            mockStore.Verify(s => s.SaveEventsAsync(
+                id,
+                It.Is<IEnumerable<DomainEvent>>(events => events.Any(e => e is WithdrawalPerformed)),
                 1), Times.Once);
         }
     }

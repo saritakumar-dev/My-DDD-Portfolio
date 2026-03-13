@@ -31,6 +31,7 @@ await accountService.HandleWithdrawal(accountId, 5000.00M);
 
 Console.WriteLine($"-------------------------------");
 Console.WriteLine($"Account ID: {accountId}");
-Console.WriteLine($"Current Balance: {await accountService.DisplayBalance(accountId):C}");
+Console.WriteLine($"Current Balance: {await accountService.HandleDisplayBalance(accountId):C}");
 Console.WriteLine($"-------------------------------");
 
+Console.WriteLine($"The account {accountId} is {await accountService.HandleCloseAccount(accountId)} now");

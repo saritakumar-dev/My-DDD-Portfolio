@@ -1,10 +1,6 @@
 ﻿using EventSourcingDomainModelApp.Domain;
 using EventSourcingDomainModelApp.Infrastructure;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+using static EventSourcingDomainModelApp.Domain.CreditAccount;
 
 namespace EventSourcingDomainModelApp.Application
 {
@@ -55,7 +51,7 @@ namespace EventSourcingDomainModelApp.Application
             //account.MarkChangesAsCommitted();
         }
 
-        public async Task<decimal> DisplayBalance(Guid id)
+        public async Task<decimal> HandleDisplayBalance(Guid id)
         {
             var events = await _eventStore.LoadEventsAsync(id);
 
@@ -66,6 +62,23 @@ namespace EventSourcingDomainModelApp.Application
             account.LoadFromHistory(events);
 
             return account.Balance;
+        }
+
+        public async Task<Status> HandleCloseAccount(Guid id)
+        {
+            var events = await _eventStore.LoadEventsAsync(id);
+
+            if (!events.Any()) throw new Exception("Account Not Found");
+
+            var account = new CreditAccount();
+            account.LoadFromHistory(events);
+            var originalVersion = account.Version;
+            account.CloseAccount(id);
+
+            var changes = account.GetUncommittedChanges().ToList();
+            await _eventStore.SaveEventsAsync(id, changes, originalVersion);
+
+            return account.BankStatus;
         }
     }
 }

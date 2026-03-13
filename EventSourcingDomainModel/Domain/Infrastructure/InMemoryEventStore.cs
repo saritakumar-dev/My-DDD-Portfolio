@@ -20,12 +20,14 @@ namespace EventSourcingDomainModelApp.Infrastructure
 
         public Task SaveEventsAsync(Guid aggregateId, IEnumerable<DomainEvent> events, int expectedVersion)
         {
-            if(!_store.ContainsKey(@aggregateId))
-                _store[aggregateId]= new List<DomainEvent>();
+                if(!_store.ContainsKey(@aggregateId))
+                _store[aggregateId]= [];
 
             var currentVersion = _store[aggregateId].Count;
             if(currentVersion != expectedVersion)
                 throw new Exception("CONCURRENCY CONFLICT: The account state has changed. Please retry.");
+
+           
 
             _store[aggregateId].AddRange(events);
             return Task.CompletedTask;

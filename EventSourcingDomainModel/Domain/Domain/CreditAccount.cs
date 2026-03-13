@@ -13,6 +13,13 @@ namespace EventSourcingDomainModelApp.Domain
         public decimal OverdraftLimit { get; private set; }
         public string Owner { get; private set; }
 
+        public Status BankStatus {  get; private set; }
+        public enum Status
+        {
+            Open = 0,
+            Closed
+        }
+
         public static CreditAccount Open(Guid id, string owner, decimal limit)
         {
             var account = new CreditAccount();
@@ -22,6 +29,7 @@ namespace EventSourcingDomainModelApp.Domain
 
         public void Withdraw (decimal amount)
         {
+            if (this.BankStatus == Status.Closed) throw new Exception("Cannot withdraw from a closed account ");
             if (Balance - amount < OverdraftLimit)
                 throw new Exception("Overdraft Limit Exceeded");
             this.RaiseEvent(new WithdrawalPerformed(Id, amount, DateTime.UtcNow));
@@ -29,18 +37,26 @@ namespace EventSourcingDomainModelApp.Domain
 
         public void Deposit(decimal amount)
         {
+            if (this.BankStatus == Status.Closed) throw new InvalidOperationException("Cannot deposit to a closed account ");
             this.RaiseEvent(new MoneyDeposited(Id, amount, DateTime.UtcNow));
         }
+
+        public void CloseAccount(Guid accountId)
+        {
+            if (this.BankStatus == Status.Closed) throw new Exception("The account is already closed");
+            this.RaiseEvent(new AccountClosed(accountId, DateTime.UtcNow));
+        }
+
         protected override void When(DomainEvent @event)
         {
             switch (@event)
             {
-
                 case AccountOpened e:
                     Id = e.Id;
                     Owner = e.Owner;
                     OverdraftLimit = e.Limit;
                     Balance = 0;
+                    BankStatus = Status.Open;
                     break;
 
                 case MoneyDeposited e:
@@ -49,6 +65,10 @@ namespace EventSourcingDomainModelApp.Domain
 
                 case WithdrawalPerformed e:
                     Balance-= e.Amount;
+                    break;
+
+                 case AccountClosed e:
+                    BankStatus= Status.Closed;
                     break;
             }
         }

@@ -15,4 +15,6 @@ namespace EventSourcingDomainModelApp.Domain
     public record MoneyDeposited(Guid Id, decimal Amount, DateTime OccurredOn) : DomainEvent(Id, OccurredOn);
     public record WithdrawalPerformed(Guid Id, decimal Amount, DateTime OccurredOn) : DomainEvent(Id, OccurredOn);
 
+    public record AccountClosed(Guid Id, DateTime OccurredOn) :DomainEvent(Id, OccurredOn);
+
 }
