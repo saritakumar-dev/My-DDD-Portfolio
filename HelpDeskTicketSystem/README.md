@@ -57,6 +57,35 @@ To test time-dependent rules (like the 50% reassignment rule), we injected `.NET
 
 ---
 
+## 📂 Project Structure & Clean Architecture
+
+The solution is divided into four distinct layers to ensure the **Domain** remains independent of technical details (like MySQL or Console logging).
+
+### 1. HelpDesk.Domain (The "Brain")
+Contains the core business logic. It has **zero dependencies** on EF Core or any external frameworks.
+*   **`/Aggregates`**: The `Ticket` Aggregate Root.
+*   **`/ValueObjects`**: Immutable records like `TicketId`, `SlaLimit`, and `Priority`.
+*   **`/Events`**: Domain Events (`TicketOpened`, `MessageAdded`) that signal state changes.
+*   **`/Common`**: Shared interfaces like `IDateTimeProvider` or `TimeProvider`.
+
+### 2. HelpDesk.Application (The "Orchestrator")
+Coordinates the flow of data between the UI and the Domain.
+*   **`/Commands`**: Data transfer objects (DTOs) representing user intent (e.g., `OpenTicketCommand`).
+*   **`/Handlers`**: The logic that loads an aggregate, calls its methods, and saves it.
+*   **`/Interfaces`**: Defines the "Contract" for the repository (`ITicketRepository`).
+
+### 3. HelpDesk.Infrastructure (The "Hands")
+Handles technical implementation and persistence.
+*   **`/Persistence`**: The `HelpDeskDbContext` and the `IDesignTimeDbContextFactory`.
+*   **`/Configurations`**: Fluent API mappings where **Value Converters** and **Shadow Properties** are defined.
+*   **`/Repositories`**: The concrete implementation of `ITicketRepository` using EF Core.
+
+### 4. HelpDesk.Presentation.Console (The "Voice")
+The entry point of the application.
+*   **`Program.cs`**: Handles Dependency Injection (DI) and simulates the user journey (Open -> Assign -> Escalate).
+
+---
+
 ## 🚀 How to Run
 1. Update the connection string in `HelpDeskDbContextFactory`.
 2. Run migrations: 
