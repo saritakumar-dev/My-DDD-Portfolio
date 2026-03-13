@@ -12,7 +12,7 @@ A collection of projects exploring tactical and strategic DDD patterns, clean ar
 - **Key Feature:** Implements a credit account where every transaction is a "fact" in a ledger.
 - **Tech:** .NET 8, xUnit, Moq, In-Memory Event Store.
 
-### 2. [Tactical-Domain-Driven-Design HelpDesk Ticket Management](./EventSourcingDomainModel)
+### 2. [Tactical-Domain-Driven-Design HelpDesk Ticket Management](./02-HelpDeskTicketSystem)
 **Focus:** Solving Complex Domain Logic using Domain Model Pattern
 - **Concepts:** Aggregate Roots, Value Objects, Consistency Boundary, Immutable Domain Events, Value Convereters
 - **Key Feature:** Implements a complete lifecycle of a ticket in a Helpdesk System including features like Escalations and SLAs calculations.
