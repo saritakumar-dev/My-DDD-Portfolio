@@ -97,7 +97,7 @@ The entry point of the application.
 
 ### 1. Clean Architecture (Ports & Adapters)
 The project follows the **Ports and Adapters** pattern to decouple business logic from external technologies.
-*   **The Domain Model:** Tn the domain model, the business entities (aggregates and value objects) does have no dependency and no knowledge of the underlying infrastructure. 
+*   **The Domain Model:** In the domain model, the business entities (aggregates and value objects) does have no dependency and no knowledge of the underlying infrastructure or any other layer. It is the heart. 
 *   **The Port:** `ITicketRepository` (defined in the Application layer).
 *   **The Adapter:** `TicketRepository` (defined in the Infrastructure layer).
 *   **Benefit:** We can swap MySQL for any other database (or a Mock for testing) without changing a single line of business logic.
