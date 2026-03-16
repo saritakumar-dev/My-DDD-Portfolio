@@ -93,6 +93,26 @@ The entry point of the application.
 
 ---
 
+## 🏛️ Architectural Patterns & Principles
+
+### 1. Clean Architecture (Ports & Adapters)
+The project follows the **Ports and Adapters** pattern to decouple business logic from external technologies.
+*   **The Port:** `ITicketRepository` (defined in the Application layer).
+*   **The Adapter:** `TicketRepository` (defined in the Infrastructure layer).
+*   **Benefit:** We can swap MySQL for any other database (or a Mock for testing) without changing a single line of business logic.
+
+### 2. Dependency Inversion Principle (DIP)
+We applied the **D' in SOLID**. High-level modules (Application) do not depend on low-level modules (Infrastructure). Both depend on abstractions (`ITicketRepository`). This ensures the **Domain** remains the center of the universe.
+
+### 3. Synchronous vs. Asynchronous Execution
+The project uses a hybrid approach to maximize performance and maintainability:
+*   **Synchronous Domain Logic:** All methods within the `Ticket` aggregate (e.g., `Escalate`, `AssignAgent`) are **Synchronous**. This is because they perform "In-Memory" state transitions and logic calculations that do not involve I/O.
+*   **Asynchronous Infrastructure/Application:** All operations involving the database or external services (e.g., `GetTicketAsync`, `SaveChangesAsync`) are **Asynchronous**. This ensures the application remains scalable and does not block threads during I/O-bound tasks.
+    **Why:** This prevents thread-blocking during database communication, allowing the system to handle more concurrent requests efficiently.
+    **Implementation:** Every repository method returns a `Task` and is properly `awaited` in the Command Handlers.
+
+---
+
 ## 🚀 How to Run
 1. Update the connection string in `HelpDeskDbContextFactory`.
 2. Run migrations: 
