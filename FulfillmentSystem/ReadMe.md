@@ -30,7 +30,7 @@ graph LR
 
     subgraph PaymentService [Payment Service - Orchestrator]
          subgraph Transaction [SQL Transaction Scope]
-            D[Background Poller] -- 1. Polls --> C
+            D[OrderPollingWorker Poller] -- 1. Polls --> C
             E[ACL / Translation] --> F{2. Process Payment}
             F -- Success --> G[3. Push to Shipping]
             
@@ -42,10 +42,6 @@ graph LR
             G -- 4b. Fail/Timeout --> H[Rollback Transaction]
             L -- 5b. Ack Fail --> H
         end
-        
-        G -- 4. Success Ack --> L
-        F -- Fail --> H[5. Rollback Transaction]
-        L -- 6. Commit --> Transaction
     end
 
     subgraph ShippingService [Shipping Service - Consumer]
