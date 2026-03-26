@@ -2,15 +2,15 @@
 Inspired by Chapter 9 of Vlad Khononov's Learning Domain-Driven Design, this project implements a microservices-based fulfilment system focused on distributed consistency and domain boundary protection. Unlike typical tutorials that rely on external message brokers (RabbitMQ/Kafka), this implementation achieves Reliable Messaging without a Message Bus using standard RDBMS patterns and REST.
 
 # 🏗️ Architecture & Core Services
-•	OrderService (Producer): Acts as the Open Host Service (OHS) and source of truth.
-•	PaymentService (Orchestrator): The "brain" that polls for events and drives the lifecycle.
-•	ShippingCoordinator (Consumer): A consumer, reacting to payment confirmations and ensuring the local shipment state is consistent before acknowledging the coordinator.
+-	OrderService (Producer): Acts as the Open Host Service (OHS) and source of truth.
+-	PaymentService (Orchestrator): The "brain" that polls for events and drives the lifecycle.
+-	ShippingCoordinator (Consumer): A consumer, reacting to payment confirmations and ensuring the local shipment state is consistent before acknowledging the coordinator.
 
 # 🎯 Key Learning Objectives
-•	Reliable Data Exchange: Solving the "Dual-Write" problem via Outbox/Inbox patterns.
-•	Boundary Protection: Using Anti-Corruption Layers (ACL) to prevent "model bleed."
-•	Orchestration: Managing the order lifecycle via a local coordinator rather than pure choreography.
-•	Strategic DDD: Implementing stable APIs as a Published Language.
+-	Reliable Data Exchange: Solving the "Dual-Write" problem via Outbox/Inbox patterns.
+-	Boundary Protection: Using Anti-Corruption Layers (ACL) to prevent "model bleed."
+-	Orchestration: Managing the order lifecycle via a local coordinator rather than pure choreography.
+-	Strategic DDD: Implementing stable APIs as a Published Language.
 
 # 🔄 The Fulfilment Flow
 1.	Order Service: Persists an Order and an OutboxMessage in one atomic transaction.
@@ -30,7 +30,7 @@ graph LR
 
     subgraph PaymentService [Payment Service - Orchestrator]
         subgraph Transaction [SQL Transaction Scope]
-            D[Background Poller] -- 1. Polls --> C
+            D[OrderPollingWorker Poller] -- 1. Polls --> C
             E[ACL / Translation] --> F{2. Process Payment}
             F -- Success --> G[3. Push to Shipping]
         end
