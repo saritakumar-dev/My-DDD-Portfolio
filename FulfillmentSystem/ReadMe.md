@@ -25,50 +25,48 @@ Inbox (Idempotency)	Duplicate Processing	Tracks processed Event IDs to ensure a 
 API Polling (Relay)	Service Coupling	A .NET BackgroundService pulls events via internal REST APIs instead of a broker.
 Unit of Work	Partial Failure	Wraps Payment + Outbox + Inbox into a single atomic SQL transaction.
 
-#  🛠️ Tactical DDD & Technical Stack
+#  🛠️ Tactical DDD patterns & Technical Stack
 
 -	Anti-Corruption Layer (ACL): A dedicated layer in the Payment Service that translates external OrderPlaced events into internal Payment domain models, keeping the core logic "pure.
 -	Stateless Translation: Logic within the ACL to map external currency codes to internal gateway-compatible formats (e.g., "RS" to "INR").
 -	Aggregate Roots: Clear boundaries between Order, Payment and Shipping entities, each with its own database and lifecycle.
 -	Enums for State Management: Using different Status Enums (with EF Core string conversion) instead of magic strings.
 
- ## 🛠️ Tech Stack & Implementation
+ ## ⚙️ Tech Stack & Implementation
    -	Tech Stack: .NET 8 / C#, Entity Framework Core, MySQL.
    -	Background/Hosted Services (Infrastructure Layer)
    -	Resiliency: Use of IHttpClientFactory to prevent socket exhaustion and handle DNS updates.
    -	Scoped Services in Singletons: Demonstration of manual IServiceScope creation within a BackgroundService to resolve DbContext safely.
    -	Atomic Transactions: Using BeginTransactionAsync to wrap business logic and Outbox/Inbox updates together.
 
-# Architectural Patterns Practiced
-    ## Service A: Order Service (The Upstream)
-        •	Source of Truth: Responsible for capturing customer intent and serving as the primary source of truth for orders.
+#  🏛️ Architectural Patterns Practiced
+   ## 📦 Service A: Order Service (The Upstream)
+        -	Source of Truth: Responsible for capturing customer intent and serving as the primary source of truth for orders.
         
-        •	Outbox Pattern: Ensures transactional consistency by saving the Order entity and an `OutboxMessage` in a single atomic transaction. This prevents the "dual-write" problem where a database update succeeds but message publication fails.
+        -	Outbox Pattern: Ensures transactional consistency by saving the Order entity and an `OutboxMessage` in a single atomic transaction. This prevents the "dual-write" problem where a database update succeeds but message publication fails.
         
-        •	Open Host Service (OHS): Exposes a stable API using DTOs as a Published Language. This decouples the public API from the internal database schema, allowing for internal refactors without breaking downstream consumers.
-    ##  Service B: Payment Service (The Main Coordinator)
-        •	Local Orchestrator: Acts as the "Watchdog" and driver for the middle of the order lifecycle. It polls the Order Service for unprocessed events and drives the transition to Shipping.
+        -	Open Host Service (OHS): Exposes a stable API using DTOs as a Published Language. This decouples the public API from the internal database schema, allowing for internal refactors without breaking downstream consumers.
         
-        •	Anti-Corruption Layer (ACL): Uses a translation layer to map incoming OrderPlaced events from Service A into internal domain objects. This protects the Payment domain from external schema changes.
+    ##  💳 Service B: Payment Service (The Main Coordinator)
+        -	Local Orchestrator: Acts as the "Watchdog" and driver for the middle of the order lifecycle. It polls the Order Service for unprocessed events and drives the transition to Shipping.
         
-        •	Transactional Inbox Pattern: Maintains an InboxMessages table to ensure idempotency. It tracks processed Event IDs with statuses like “Completed” or “Data Error” to prevent duplicate charges or infinite retry loops.
+        -	Anti-Corruption Layer (ACL): Uses a translation layer to map incoming OrderPlaced events from Service A into internal domain objects. This protects the Payment domain from external schema changes.
+        
+        -	Transactional Inbox Pattern: Maintains an InboxMessages table to ensure idempotency. It tracks processed Event IDs with statuses like “Completed” or “Data Error” to prevent duplicate charges or infinite retry loops.
 
-     ## 	The Push-Ack Chain
+       - The Push-Ack Chain
         This is a synchronous hand-off with asynchronous reliability.
         1.	The "Push": The Payment Service (Orchestrator) actively pushes a request to the Shipping Service via a REST call.
         2.	The "Ack" (Acknowledgment): The Payment Service only marks its own task as "Complete" and acknowledges the upstream Order Service after it receives a successful response from Shipping.
         3.	Why it matters: It ensures that no step in the chain is "forgotten." If Shipping is down, the Payment Service never sends the final Ack, causing the background worker to retry the entire step until the hand-off is confirmed.
 
 
-
-
-
-   ##      Service C: Shipping Coordinator (The Consumer)
-              •	Passive Fulfilment: Acts as a downstream worker that listens for validated "intents to ship" from the Payment Service.
+   ##  🚚 Service C: Shipping Coordinator (The Consumer)
+        -	Passive Fulfilment: Acts as a downstream worker that listens for validated "intents to ship" from the Payment Service.
               
-              •	Inbox Pattern: Implements its own idempotency check using an InboxMessages table to prevent duplicate shipping requests.
+        - Inbox Pattern: Implements its own idempotency check using an InboxMessages table to prevent duplicate shipping requests.
               
-              •	Background Fulfilment (Future Work): Uses an Infrastructure-level Hosted Service (Worker) to poll for Pending shipping records, simulate logistics (labelling/tracking), and transition the status to ReadyForDispatch.
+        - Background Fulfilment (Future Work): Uses an Infrastructure-level Hosted Service (Worker) to poll for Pending shipping records, simulate logistics (labelling/tracking), and transition the status to ReadyForDispatch.
 
 # 🛡️ Resiliency & Error Handling
 We distinguish between failure types to ensure the system is self-healing:
