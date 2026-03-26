@@ -27,17 +27,17 @@ Unit of Work	Partial Failure	Wraps Payment + Outbox + Inbox into a single atomic
 
 #  🛠️ Tactical DDD & Technical Stack
 
-•	Anti-Corruption Layer (ACL): A dedicated layer in the Payment Service that translates external OrderPlaced events into internal Payment domain models, keeping the core logic "pure.
-•	Stateless Translation: Logic within the ACL to map external currency codes to internal gateway-compatible formats (e.g., "RS" to "INR").
-•	Aggregate Roots: Clear boundaries between Order, Payment and Shipping entities, each with its own database and lifecycle.
-•	Enums for State Management: Using different Status Enums (with EF Core string conversion) instead of magic strings.
+-	Anti-Corruption Layer (ACL): A dedicated layer in the Payment Service that translates external OrderPlaced events into internal Payment domain models, keeping the core logic "pure.
+-	Stateless Translation: Logic within the ACL to map external currency codes to internal gateway-compatible formats (e.g., "RS" to "INR").
+-	Aggregate Roots: Clear boundaries between Order, Payment and Shipping entities, each with its own database and lifecycle.
+-	Enums for State Management: Using different Status Enums (with EF Core string conversion) instead of magic strings.
 
  ## Technical Implementation Details
-   •	Tech Stack: .NET 8 / C#, Entity Framework Core, MySQL.
-   •	Background/Hosted Services (Infrastructure Layer)
-   •	Resiliency: Use of IHttpClientFactory to prevent socket exhaustion and handle DNS updates.
-   •	Scoped Services in Singletons: Demonstration of manual IServiceScope creation within a BackgroundService to resolve DbContext safely.
-   •	Atomic Transactions: Using BeginTransactionAsync to wrap business logic and Outbox/Inbox updates together.
+   -	Tech Stack: .NET 8 / C#, Entity Framework Core, MySQL.
+   -	Background/Hosted Services (Infrastructure Layer)
+   -	Resiliency: Use of IHttpClientFactory to prevent socket exhaustion and handle DNS updates.
+   -	Scoped Services in Singletons: Demonstration of manual IServiceScope creation within a BackgroundService to resolve DbContext safely.
+   -	Atomic Transactions: Using BeginTransactionAsync to wrap business logic and Outbox/Inbox updates together.
 
 # Architectural Patterns Practiced
     ## Service A: Order Service (The Upstream)
