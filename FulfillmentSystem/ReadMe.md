@@ -32,7 +32,7 @@ Unit of Work	Partial Failure	Wraps Payment + Outbox + Inbox into a single atomic
 -	Aggregate Roots: Clear boundaries between Order, Payment and Shipping entities, each with its own database and lifecycle.
 -	Enums for State Management: Using different Status Enums (with EF Core string conversion) instead of magic strings.
 
- ## Technical Implementation Details
+ ## 🛠️ Tech Stack & Implementation
    -	Tech Stack: .NET 8 / C#, Entity Framework Core, MySQL.
    -	Background/Hosted Services (Infrastructure Layer)
    -	Resiliency: Use of IHttpClientFactory to prevent socket exhaustion and handle DNS updates.
