@@ -47,7 +47,7 @@ Unit of Work	Partial Failure	Wraps Payment + Outbox + Inbox into a single atomic
         
         -	Open Host Service (OHS): Exposes a stable API using DTOs as a Published Language. This decouples the public API from the internal database schema, allowing for internal refactors without breaking downstream consumers.
         
-    ##  💳 Service B: Payment Service (The Main Coordinator)
+   ## 💳 Service B: Payment Service (The Main Coordinator)
         -	Local Orchestrator: Acts as the "Watchdog" and driver for the middle of the order lifecycle. It polls the Order Service for unprocessed events and drives the transition to Shipping.
         
         -	Anti-Corruption Layer (ACL): Uses a translation layer to map incoming OrderPlaced events from Service A into internal domain objects. This protects the Payment domain from external schema changes.
@@ -77,26 +77,43 @@ Permanent Failures (e.g., Corrupt JSON):
 Strategy: Dead-Lettering.
 Action: Record status as "Data Error", send an Acknowledgement (Ack) to silence the event, and transaction.CommitAsync().
 
-# Project Structure
-The solution follows a clean, folder-based organization within each service to separate technical plumbing from business logic: 
-Domain/: Core entities (e.g. Order, OrderStatus) and business abstractions.
-Data/: Persistence layer including AppDbContext, EF Core Migrations, and the OutboxMessage infrastructure entity.
-Dtos/: Public-facing contracts (Requests/Responses) used for the OHS pattern.
-In modern .NET (C# 9+), records are preferred for DTOs because they are immutable by default (DTOs should be immutable. This prevents data from being accidentally changed after the API has received or prepared it. Dtos are the perfect place to add attributes (like [Required] or [MinLength]) for automated input validation.
-Interfaces/: Repository abstractions (IOrderRepository) to facilitate testing and decoupling.
-In Payment Service, The Application Layer contains the PaymentOrchestrator, which manages the business transaction. It ensures the atomicity of the Payment and Outbox records, 
-# Getting Started & Running the System
+# 📂 Project Structure
+
+The solution follows a Clean Architecture approach within each service to separate concerns:
+
+```text
+src/
+├── 📦 OrderService/
+│   ├── DTOs/               # DTOs
+│   ├── Domain/             # Order Entity, Repository interfaces
+│   ├── Infrastructure/     # Persistence (MySQL), Outbox Workers entity, and API Clients, Repositories Implementations
+│   └── API/                # Controllers and Middleware
+│
+├── 💳 PaymentService/
+│   ├── ACL/                # Anti-Corruption Layer (Translators)
+│   ├── Application/        # Orchestration Logic, Payment Gateway
+│   ├── Infrastructure/     # Inbox Implementation & Polling Workers, Inbox and Outbox workers entities
+│   └── Domain/             # Payment entity & Gateway Logic
+│
+└── 🚚 ShippingService/
+    ├── DTOs/               # DTOs
+    └── Infrastructure/     # Persistence (MySQL), Inbox & Background Fulfilment Workers, Repositories Implementations
+    └── Domain/             # Shiiping Detail entity, Repository interfaces
+    └── API/                # Controllers and Middleware
+
+
+# 🚀 Getting Started & Running the System
 To see the distributed flow in action, follow these steps to set up your local environment.
-Prerequisites
-•	.NET 8 SDK installed.
-•	MySQL Server (Ensure it is running and you have permissions to create databases).
+### 📋 Prerequisites
+-	.NET 8 SDK installed.
+-	MySQL Server (Ensure it is running and you have permissions to create databases).
 Step 1: Configuration
 Update the ConnectionStrings in the appsettings.json file for each of the three services:
-•	OrderService/appsettings.json
-•	PaymentService/appsettings.json
-•	ShippingService/appsettings.json
+-	OrderService/appsettings.json
+-	PaymentService/appsettings.json
+-	ShippingService/appsettings.json
 
-Step 2: Database Initialization
+### ⚙️ Step 2: Database Initialization
 Each service maintains its own Bounded Context (boundary) and database schema. Open your terminal in each project folder and run:
 1.	Run Migrations: Open your terminal in each of the following project folders and execute the update command:
 dotnet ef database update 
@@ -108,13 +125,14 @@ Note: This command will automatically create the local MySQL databases (if they 
 
 3.	Troubleshooting: If the command fails, ensure your MySQL server is running and that the credentials in each appsettings.json match your local environment.
 
-Step 3: Launching the Services
+### 🚀 Step 3: Launching the Services
 Because the Payment Service polls the Order Service, they must be running simultaneously.
 •	In Visual Studio: Right-click the Solution > Configure Startup Projects... > Select Multiple startup projects and set OrderService, PaymentService, and ShippingService to Start.
 •	In VS Code / Terminal: Open three separate terminal tabs and run dotnet run in each project directory.
-Step 4: Triggering the Flow
+
+### ⚡ Step 4: Triggering the Flow
 Use a tool like Postman or Swagger to send a POST request to the OrderService. This kicks off the Outbox/Inbox/Polling chain:
 •	Endpoint: POST http://localhost:[ORDER_PORT]/api/orders
 
-Step 5: Verification
+### ✅ Step 5: Verification
 Watch the console logs of the Payment Service to see the BackgroundService pick up the event, translate it through the ACL, and push it to the Shipping Service. Check your MySQL tables (orders, inboxmessages, outboxmessages, payments, shippingdetails) to see the state changes in real-time.
