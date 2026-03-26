@@ -69,13 +69,13 @@ Unit of Work	Partial Failure	Wraps Payment + Outbox + Inbox into a single atomic
    - Background Fulfilment (Future Work): Uses an Infrastructure-level Hosted Service (Worker) to poll for Pending shipping records, simulate logistics (labelling/tracking), and transition the status to ReadyForDispatch.
 
 # 🛡️ Resiliency & Error Handling
-We distinguish between failure types to ensure the system is self-healing:
-Transient Failures (e.g., Network timeouts):
-Strategy: Rollback & Retry.
-Action: transaction.RollbackAsync(); the worker will retry 10 seconds later.
-Permanent Failures (e.g., Corrupt JSON):
-Strategy: Dead-Lettering.
-Action: Record status as "Data Error", send an Acknowledgement (Ack) to silence the event, and transaction.CommitAsync().
+In a distributed system, not all errors are equal. Our implementation distinguishes between Transient and Permanent failures to ensure the system is self-healing :
+1.  **Transient Failures** (e.g., Network timeouts):
+    -**Strategy**: Rollback & Retry.
+    -**Action**: transaction.RollbackAsync(); the worker will retry 10 seconds later.
+2.  **Permanent Failures** (e.g., Corrupt JSON):
+    -**Strategy**: Dead-Lettering.
+    -**Action**: Record status as "Data Error", send an Acknowledgement (Ack) to silence the event, and transaction.CommitAsync().
 
 # 📂 Project Structure
 
