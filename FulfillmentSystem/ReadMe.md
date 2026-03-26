@@ -1,7 +1,7 @@
 # 📦 Distributed Order Fulfilment System
 Inspired by Chapter 9 of Vlad Khononov's Learning Domain-Driven Design, this project implements a microservices-based fulfilment system focused on distributed consistency and domain boundary protection. Unlike typical tutorials that rely on external message brokers (RabbitMQ/Kafka), this implementation achieves Reliable Messaging without a Message Bus using standard RDBMS patterns and REST.
 
-#🏗️ Architecture & Core Services
+# 🏗️ Architecture & Core Services
 •	OrderService (Producer): Acts as the Open Host Service (OHS) and source of truth.
 •	PaymentService (Orchestrator): The "brain" that polls for events and drives the lifecycle.
 •	ShippingCoordinator (Consumer): A consumer, reacting to payment confirmations and ensuring the local shipment state is consistent before acknowledging the coordinator.
@@ -17,6 +17,35 @@ Inspired by Chapter 9 of Vlad Khononov's Learning Domain-Driven Design, this pro
 2.	Payment Service: Polls the outbox, translates data via an ACL, charges the customer, and pushes to Shipping.
 3.	Shipping Coordinator Service: Records the intent in an Inbox for idempotency and acknowledges the request.
 4.	Completion: Payment Service acknowledges the event back to Order Service and commits the local transaction.
+
+   ## 🗺️ Visual Architecture Flow
+
+```mermaidgraph LR
+    subgraph OrderService [Order Service - Upstream]
+        A[Create Order] --> B[(DB + Outbox)]
+        B --> C[OHS / API Endpoint]
+        C -- Success Ack --> L[Mark Outbox Processed]
+    end
+
+    subgraph PaymentService [Payment Service - Orchestrator]
+        subgraph Transaction [SQL Transaction Scope]
+            D[Background Poller] -- 1. Polls --> C
+            E[ACL / Translation] --> F{2. Process Payment}
+            F -- Success --> G[3. Push to Shipping]
+        end
+        
+        G -- 4. Success Ack --> L
+        F -- Fail --> H[5. Rollback Transaction]
+        L -- 6. Commit --> Transaction
+    end
+
+    subgraph ShippingService [Shipping Service - Consumer]
+        G --> I[(Inbox + Shipping DB)]
+        I --> J[Background Worker]
+        J --> K[Ready for Dispatch]
+    end
+```
+
 
 # ⭐ Distributed Data Patterns (The "Star" of the project)
 •Pattern	Problem Solved	Implementation Detail
