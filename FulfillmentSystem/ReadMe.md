@@ -20,7 +20,8 @@ Inspired by Chapter 9 of Vlad Khononov's Learning Domain-Driven Design, this pro
 
    ## 🗺️ Visual Architecture Flow
 
-```mermaidgraph LR
+```mermaid
+graph LR
     subgraph OrderService [Order Service - Upstream]
         A[Create Order] --> B[(DB + Outbox)]
         B --> C[OHS / API Endpoint]
@@ -41,8 +42,6 @@ Inspired by Chapter 9 of Vlad Khononov's Learning Domain-Driven Design, this pro
 
     subgraph ShippingService [Shipping Service - Consumer]
         G --> I[(Inbox + Shipping DB)]
-        I --> J[Background Worker]
-        J --> K[Ready for Dispatch]
     end
 ```
 
