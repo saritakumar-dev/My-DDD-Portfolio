@@ -29,10 +29,18 @@ graph LR
     end
 
     subgraph PaymentService [Payment Service - Orchestrator]
-        subgraph Transaction [SQL Transaction Scope]
-            D[OrderPollingWorker Poller] -- 1. Polls --> C
+         subgraph Transaction [SQL Transaction Scope]
+            D[Background Poller] -- 1. Polls --> C
             E[ACL / Translation] --> F{2. Process Payment}
             F -- Success --> G[3. Push to Shipping]
+            
+            %% The Logic: Shipping -> OrderService -> Local Commit
+            G -- 4. Success Ack --> L
+            L -- 5. Ack From OrderService--> M[6. Commit Local Transaction]
+            
+            %% The Fallback
+            G -- 4b. Fail/Timeout --> H[Rollback Transaction]
+            L -- 5b. Ack Fail --> H
         end
         
         G -- 4. Success Ack --> L
