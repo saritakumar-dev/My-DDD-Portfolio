@@ -39,60 +39,47 @@ Unit of Work	Partial Failure	Wraps Payment + Outbox + Inbox into a single atomic
    •	Scoped Services in Singletons: Demonstration of manual IServiceScope creation within a BackgroundService to resolve DbContext safely.
    •	Atomic Transactions: Using BeginTransactionAsync to wrap business logic and Outbox/Inbox updates together.
 
-5. Architectural Patterns Practiced
- Service A: Order Service (The Upstream)
-•	Source of Truth: Responsible for capturing customer intent and serving as the primary source of truth for orders.
+# Architectural Patterns Practiced
+    ## Service A: Order Service (The Upstream)
+        •	Source of Truth: Responsible for capturing customer intent and serving as the primary source of truth for orders.
+        
+        •	Outbox Pattern: Ensures transactional consistency by saving the Order entity and an `OutboxMessage` in a single atomic transaction. This prevents the "dual-write" problem where a database update succeeds but message publication fails.
+        
+        •	Open Host Service (OHS): Exposes a stable API using DTOs as a Published Language. This decouples the public API from the internal database schema, allowing for internal refactors without breaking downstream consumers.
+    ##  Service B: Payment Service (The Main Coordinator)
+        •	Local Orchestrator: Acts as the "Watchdog" and driver for the middle of the order lifecycle. It polls the Order Service for unprocessed events and drives the transition to Shipping.
+        
+        •	Anti-Corruption Layer (ACL): Uses a translation layer to map incoming OrderPlaced events from Service A into internal domain objects. This protects the Payment domain from external schema changes.
+        
+        •	Transactional Inbox Pattern: Maintains an InboxMessages table to ensure idempotency. It tracks processed Event IDs with statuses like “Completed” or “Data Error” to prevent duplicate charges or infinite retry loops.
 
-•	Outbox Pattern: Ensures transactional consistency by saving the Order entity and an `OutboxMessage` in a single atomic transaction. This prevents the "dual-write" problem where a database update succeeds but message publication fails.
-
-•	Open Host Service (OHS): Exposes a stable API using DTOs as a Published Language. This decouples the public API from the internal database schema, allowing for internal refactors without breaking downstream consumers.
-Service B: Payment Service (The Main Coordinator)
-•	Local Orchestrator: Acts as the "Watchdog" and driver for the middle of the order lifecycle. It polls the Order Service for unprocessed events and drives the transition to Shipping.
-
-•	Anti-Corruption Layer (ACL): Uses a translation layer to map incoming OrderPlaced events from Service A into internal domain objects. This protects the Payment domain from external schema changes.
-
-•	Transactional Inbox Pattern: Maintains an InboxMessages table to ensure idempotency. It tracks processed Event IDs with statuses like “Completed” or “Data Error” to prevent duplicate charges or infinite retry loops.
-
-•	The Push-Ack Chain
-This is a synchronous hand-off with asynchronous reliability.
-1.	The "Push": The Payment Service (Orchestrator) actively pushes a request to the Shipping Service via a REST call.
-2.	The "Ack" (Acknowledgment): The Payment Service only marks its own task as "Complete" and acknowledges the upstream Order Service after it receives a successful response from Shipping.
-3.	Why it matters: It ensures that no step in the chain is "forgotten." If Shipping is down, the Payment Service never sends the final Ack, causing the background worker to retry the entire step until the hand-off is confirmed.
-
-
+     ## 	The Push-Ack Chain
+        This is a synchronous hand-off with asynchronous reliability.
+        1.	The "Push": The Payment Service (Orchestrator) actively pushes a request to the Shipping Service via a REST call.
+        2.	The "Ack" (Acknowledgment): The Payment Service only marks its own task as "Complete" and acknowledges the upstream Order Service after it receives a successful response from Shipping.
+        3.	Why it matters: It ensures that no step in the chain is "forgotten." If Shipping is down, the Payment Service never sends the final Ack, causing the background worker to retry the entire step until the hand-off is confirmed.
 
 
 
-Service C: Shipping Coordinator (The Consumer)
-•	Passive Fulfilment: Acts as a downstream worker that listens for validated "intents to ship" from the Payment Service.
 
-•	Inbox Pattern: Implements its own idempotency check using an InboxMessages table to prevent duplicate shipping requests.
 
-•	Background Fulfilment (Future Work): Uses an Infrastructure-level Hosted Service (Worker) to poll for Pending shipping records, simulate logistics (labelling/tracking), and transition the status to ReadyForDispatch.
+   ##      Service C: Shipping Coordinator (The Consumer)
+              •	Passive Fulfilment: Acts as a downstream worker that listens for validated "intents to ship" from the Payment Service.
+              
+              •	Inbox Pattern: Implements its own idempotency check using an InboxMessages table to prevent duplicate shipping requests.
+              
+              •	Background Fulfilment (Future Work): Uses an Infrastructure-level Hosted Service (Worker) to poll for Pending shipping records, simulate logistics (labelling/tracking), and transition the status to ReadyForDispatch.
 
-6. Resiliency & Error Handling Strategy
-In a distributed system, not all errors are equal. Our implementation distinguishes between Transient and Permanent failures to ensure the system is self-healing without becoming stuck.
-1. Transient Failures (Temporary Glitches)
-Examples: Network timeouts, Service B is restarting (503 Service Unavailable), or Database deadlocks.
-The Strategy: Rollback & retry.
-Implementation:
-The Worker catches the exception or detects the timeout.
-It calls await transaction.RollbackAsync(). This "undoes" any local database changes (like the Payment record).
-The Worker uses continue to move to the next item in the batch.
-Because the InboxMessage was never committed, the next polling cycle (10 seconds later) will pick up the same event and try again.
-2. Permanent Failures (Poison Messages)
-Examples: Corrupt JSON data, missing required fields (e.g., No Shipping Address), or a 400 Bad Request from a downstream API.
-The Strategy: Dead-Lettering (Acknowledge & Archive).
-Implementation:
-The Worker identifies that retrying will not fix the issue.
-It records an InboxMessage with a specific status: Status = "Data Error".
-Crucial Step: It sends an Acknowledgement (Ack) back to the Upstream Service (Order Service) to "silence" the event.
-It calls await transaction.CommitAsync().
-Failure Type	Example	Strategy	Action
-Transient	Network Timeout	Rollback & Retry	transaction.RollbackAsync()
-Permanent	Data Corruption	Dead-Letter (Ack)	transaction.CommitAsync()
+# 🛡️ Resiliency & Error Handling
+We distinguish between failure types to ensure the system is self-healing:
+Transient Failures (e.g., Network timeouts):
+Strategy: Rollback & Retry.
+Action: transaction.RollbackAsync(); the worker will retry 10 seconds later.
+Permanent Failures (e.g., Corrupt JSON):
+Strategy: Dead-Lettering.
+Action: Record status as "Data Error", send an Acknowledgement (Ack) to silence the event, and transaction.CommitAsync().
 
-7. Project Structure
+# Project Structure
 The solution follows a clean, folder-based organization within each service to separate technical plumbing from business logic: 
 Domain/: Core entities (e.g. Order, OrderStatus) and business abstractions.
 Data/: Persistence layer including AppDbContext, EF Core Migrations, and the OutboxMessage infrastructure entity.
@@ -100,7 +87,7 @@ Dtos/: Public-facing contracts (Requests/Responses) used for the OHS pattern.
 In modern .NET (C# 9+), records are preferred for DTOs because they are immutable by default (DTOs should be immutable. This prevents data from being accidentally changed after the API has received or prepared it. Dtos are the perfect place to add attributes (like [Required] or [MinLength]) for automated input validation.
 Interfaces/: Repository abstractions (IOrderRepository) to facilitate testing and decoupling.
 In Payment Service, The Application Layer contains the PaymentOrchestrator, which manages the business transaction. It ensures the atomicity of the Payment and Outbox records, 
-8. Getting Started & Running the System
+# Getting Started & Running the System
 To see the distributed flow in action, follow these steps to set up your local environment.
 Prerequisites
 •	.NET 8 SDK installed.
