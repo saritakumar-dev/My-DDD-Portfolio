@@ -41,20 +41,20 @@ Unit of Work	Partial Failure	Wraps Payment + Outbox + Inbox into a single atomic
 
 #  🏛️ Architectural Patterns Practiced
    ## 📦 Service A: Order Service (The Upstream)
-        -	Source of Truth: Responsible for capturing customer intent and serving as the primary source of truth for orders.
-        
-        -	Outbox Pattern: Ensures transactional consistency by saving the Order entity and an `OutboxMessage` in a single atomic transaction. This prevents the "dual-write" problem where a database update succeeds but message publication fails.
-        
-        -	Open Host Service (OHS): Exposes a stable API using DTOs as a Published Language. This decouples the public API from the internal database schema, allowing for internal refactors without breaking downstream consumers.
+   -	Source of Truth: Responsible for capturing customer intent and serving as the primary source of truth for orders.
+   
+   -	Outbox Pattern: Ensures transactional consistency by saving the Order entity and an `OutboxMessage` in a single atomic transaction. This prevents the "dual-write" problem where a database update succeeds but message publication fails.
+   
+   -	Open Host Service (OHS): Exposes a stable API using DTOs as a Published Language. This decouples the public API from the internal database schema, allowing for internal refactors without breaking downstream consumers.
         
    ## 💳 Service B: Payment Service (The Main Coordinator)
-        -	Local Orchestrator: Acts as the "Watchdog" and driver for the middle of the order lifecycle. It polls the Order Service for unprocessed events and drives the transition to Shipping.
-        
-        -	Anti-Corruption Layer (ACL): Uses a translation layer to map incoming OrderPlaced events from Service A into internal domain objects. This protects the Payment domain from external schema changes.
-        
-        -	Transactional Inbox Pattern: Maintains an InboxMessages table to ensure idempotency. It tracks processed Event IDs with statuses like “Completed” or “Data Error” to prevent duplicate charges or infinite retry loops.
+   -	Local Orchestrator: Acts as the "Watchdog" and driver for the middle of the order lifecycle. It polls the Order Service for unprocessed events and drives the transition to Shipping.
+   
+   -	Anti-Corruption Layer (ACL): Uses a translation layer to map incoming OrderPlaced events from Service A into internal domain objects. This protects the Payment domain from external schema changes.
+   
+   -	Transactional Inbox Pattern: Maintains an InboxMessages table to ensure idempotency. It tracks processed Event IDs with statuses like “Completed” or “Data Error” to prevent duplicate charges or infinite retry loops.
 
-       - The Push-Ack Chain
+   - The Push-Ack Chain
         This is a synchronous hand-off with asynchronous reliability.
         1.	The "Push": The Payment Service (Orchestrator) actively pushes a request to the Shipping Service via a REST call.
         2.	The "Ack" (Acknowledgment): The Payment Service only marks its own task as "Complete" and acknowledges the upstream Order Service after it receives a successful response from Shipping.
@@ -62,11 +62,11 @@ Unit of Work	Partial Failure	Wraps Payment + Outbox + Inbox into a single atomic
 
 
    ##  🚚 Service C: Shipping Coordinator (The Consumer)
-        -	Passive Fulfilment: Acts as a downstream worker that listens for validated "intents to ship" from the Payment Service.
-              
-        - Inbox Pattern: Implements its own idempotency check using an InboxMessages table to prevent duplicate shipping requests.
-              
-        - Background Fulfilment (Future Work): Uses an Infrastructure-level Hosted Service (Worker) to poll for Pending shipping records, simulate logistics (labelling/tracking), and transition the status to ReadyForDispatch.
+   -	Passive Fulfilment: Acts as a downstream worker that listens for validated "intents to ship" from the Payment Service.
+         
+   - Inbox Pattern: Implements its own idempotency check using an InboxMessages table to prevent duplicate shipping requests.
+         
+   - Background Fulfilment (Future Work): Uses an Infrastructure-level Hosted Service (Worker) to poll for Pending shipping records, simulate logistics (labelling/tracking), and transition the status to ReadyForDispatch.
 
 # 🛡️ Resiliency & Error Handling
 We distinguish between failure types to ensure the system is self-healing:
@@ -100,7 +100,7 @@ src/
     └── Infrastructure/     # Persistence (MySQL), Inbox & Background Fulfilment Workers, Repositories Implementations
     └── Domain/             # Shiiping Detail entity, Repository interfaces
     └── API/                # Controllers and Middleware
-
+```
 
 # 🚀 Getting Started & Running the System
 To see the distributed flow in action, follow these steps to set up your local environment.
