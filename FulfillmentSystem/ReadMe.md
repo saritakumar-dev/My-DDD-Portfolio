@@ -1,4 +1,6 @@
-Title:  Distributed-Order-Fulfilment-System
+Distributed Order Fulfilment System
+Inspired by Chapter 9 of Vlad Khononov's Learning Domain-Driven Design, this project implements a microservices-based fulfilment system focused on distributed consistency and domain boundary protection.
+Unlike typical tutorials that rely on external message brokers (RabbitMQ/Kafka), this implementation achieves Reliable Messaging without a Message Bus using standard RDBMS patterns and REST.
 1.Project Overview
 Inspired by Chapter 9 of Vlad Khononov's Learning Domain-Driven Design, this project implements a microservices-based fulfilment system focused on distributed consistency and domain boundary protection.
 Unlike typical e-commerce tutorials that rely on external message brokers (RabbitMQ/Kafka), this project demonstrates how to achieve Reliable Messaging without a Message Bus using standard RDBMS patterns and REST.
