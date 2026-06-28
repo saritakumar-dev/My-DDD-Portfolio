@@ -1,0 +1,6 @@
+@BankLedger.WriteProject.API_HostAddress = http://localhost:5100
+
+GET {{BankLedger.WriteProject.API_HostAddress}}/api/transfer/
+Accept: application/json
+
+###
