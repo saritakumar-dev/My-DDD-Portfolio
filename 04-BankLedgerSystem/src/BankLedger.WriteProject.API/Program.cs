@@ -1,15 +1,17 @@
+using Azure.Identity;
 using BankLedger.Core.Common;
 using BankLedger.Core.Common.Commands;
 using BankLedger.Core.Common.Events;
 using BankLedger.Core.Common.MessageBus;
+using BankLedger.ReadModel.Projection.Handlers;
 using BankLedger.WriteProject.Application.Commands;
 using BankLedger.WriteProject.Application.Common;
 using BankLedger.WriteProject.Application.Sagas;
 using BankLedger.WriteProject.Infrastructure.Database;
 using BankLedger.WriteProject.Infrastructure.Messaging;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Azure.Cosmos;
 using Microsoft.EntityFrameworkCore;
-using System.Threading;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -33,6 +35,14 @@ builder.Services.AddScoped<IDomainEventHandler<MoneyWithdrawnEvent>>(sp => sp.Ge
 builder.Services.AddScoped<IDomainEventHandler<MoneyDepositedEvent>>(sp => sp.GetRequiredService<MoneyTransferSaga>());
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
+
+//Adding the project to single-project CQRS testing loop, later it will be replaced by Azure Service Bus
+string cosmosConnectionString = builder.Configuration.GetConnectionString("CosmosConnection")!;
+builder.Services.AddSingleton(sp => new CosmosClient(cosmosConnectionString, new DefaultAzureCredential()));
+builder.Services.AddScoped<AccountBalanceProjector>();
+builder.Services.AddScoped<IDomainEventHandler<AccountOpenedEvent>>(sp => sp.GetRequiredService<AccountBalanceProjector>());
+builder.Services.AddScoped<IDomainEventHandler<MoneyDepositedEvent>>(sp => sp.GetRequiredService<AccountBalanceProjector>());
+builder.Services.AddScoped<IDomainEventHandler<MoneyWithdrawnEvent>>(sp => sp.GetRequiredService<AccountBalanceProjector>());
 
 var app = builder.Build();
 

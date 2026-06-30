@@ -1,8 +1,3 @@
-# =====================================================================
-# Phase 2 Draft Code (Excluded from Phase 1 Commits)
-# =====================================================================
-src/BankLedger.ReadModel.Projection/
-src/BankLedger.ReadModel.API/
 
 # Standard .NET build and user artifacts
 [Bb]in/

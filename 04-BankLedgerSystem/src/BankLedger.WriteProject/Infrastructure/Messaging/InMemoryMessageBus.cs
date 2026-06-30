@@ -19,11 +19,28 @@ namespace BankLedger.WriteProject.Infrastructure.Messaging
         }
         public async Task PublishAsync<TEvent>(TEvent @event, CancellationToken cancellationToken = default) where TEvent : class
         {
+            var runtimeType = @event.GetType();
+
+            var handlerInterfaceType = typeof(IDomainEventHandler<>).MakeGenericType(runtimeType);
+
             var handlers = _serviceProvider.GetServices<IDomainEventHandler<TEvent>>();
 
             foreach (var handler in handlers)
             {
-                await handler.HandleAsync(@event, cancellationToken);
+                var method = handlerInterfaceType.GetMethod("HandleAsync");
+                if (method != null)
+                {
+                    var invocationResult = method.Invoke(handler , new object[] {@event, cancellationToken});
+
+                    if (invocationResult is Task task)
+                    {
+                        await task;
+                    }
+                    else
+                    {
+                        throw new InvalidOperationException($"Handler for event {@event.GetType().Name} did not return a valid Task.");
+                    }
+                }
             }
         }
     }
