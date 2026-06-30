@@ -1,3 +1,4 @@
+```mermaid
 graph TD
     %% Styling
     classDef write fill:#fff2cc,stroke:#d6b656,stroke-width:2px;
@@ -43,3 +44,6 @@ graph TD
     API_GET -->|Point Read by ID| COSMOS
 
     class CORE shared;
+
+```
+
