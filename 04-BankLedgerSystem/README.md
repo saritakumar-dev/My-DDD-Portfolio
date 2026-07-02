@@ -19,6 +19,12 @@ To simulate a real-world enterprise system expansion, this repository follows a 
 *   **Focus:** Deconstructing the write side via out-of-process messaging and horizontal scaling.
 *   **Planned Changes:** Offloading inbound commands to distributed message brokers (RabbitMQ/Kafka) and projecting asynchronous, denormalized read-models into a fast cache tier (Redis/NoSQL).
 
+### 🚀 Current Constraints & Architectural Roadmap
+
+* **Current Implementation State:** Phase 1 uses an explicit, transactional, in-process checkpointing Saga framework.
+* **The Failure Boundary:** If a sudden power termination or container crash occurs exactly after the MySQL withdrawal transaction commits but prior to the inline deposit command dispatch, the transaction sequence remains stored in a `WithdrawalStarted` state checklist row.
+* **Roadmap Phase 3 Resolution:** The system is explicitly designed with clean interface boundaries to support an evolutionary architecture. In the next phase, we will introduce **Azure Service Bus Topics** coupled with a **Transactional Outbox database pattern**. This will completely decouple the steps, ensuring that if a process dies mid-flight, the messaging system will guarantee atomic retries and complete the transfer automatically upon container restoration.
+
 ---
 
 ## 📂 System Architecture & Directory Layout
