@@ -49,15 +49,33 @@ namespace BankLedger.ReadModel.Projection.Handlers
                 var id = @event.AggregateId.ToString();
                 var partitionKey = new PartitionKey(id);
                 ItemResponse<AccountBalanceDocument> itemResponse = await _container.ReadItemAsync<AccountBalanceDocument>(id, partitionKey, cancellationToken: cancellationToken);
-                var document = itemResponse.Resource;
+                var currentDocument = itemResponse.Resource;
 
                 // CQRS Invariant Safeguard: Prevent duplicate or out-of-order event updates
-                if (@event.Version <= document.LastProcessedVersion) return;
+                if (@event.Version <= currentDocument.LastProcessedVersion) return;
 
-                document.CurrentBalance += @event.Amount;
-                document.LastProcessedVersion = @event.Version;
+                if (@event.Reference.Contains("REVERSAL"))
+                {
+                    Console.WriteLine($"[PROJECTOR - REVERSAL] Processing refund of {@event.Amount} back to Account {id}.");
+                }
+                else
+                {
+                    Console.WriteLine($"[PROJECTOR - CREDIT] Processing standard deposit of {@event.Amount} to Account {id}.");
+                }
 
-                await _container.UpsertItemAsync(document, partitionKey, cancellationToken: cancellationToken);
+                var updatedDocument = new AccountBalanceDocument
+                {
+                    Id = currentDocument.Id,
+                    AggregateId = currentDocument.AggregateId,
+                    CustomerName = currentDocument.CustomerName,
+                    Currency = currentDocument.Currency,
+
+                    // Apply the updated metrics safely here
+                    CurrentBalance = currentDocument.CurrentBalance + @event.Amount,
+                    LastProcessedVersion = @event.Version
+                };
+
+                await _container.UpsertItemAsync(updatedDocument, partitionKey, cancellationToken: cancellationToken);
             }
             catch (Exception ex)
             {

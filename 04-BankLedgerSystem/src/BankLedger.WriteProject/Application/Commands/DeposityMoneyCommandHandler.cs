@@ -16,30 +16,50 @@ namespace BankLedger.WriteProject.Application.Commands
         public DepositMoneyCommandHandler(IEventStore eventStore, IMessageBus messageBus)
         {
             _eventStore = eventStore;
-            _messageBus= messageBus;
+            _messageBus = messageBus;
         }
 
         public async Task HandleAsync(DepositMoneyCommand command, CancellationToken cancellationToken)
         {
-            var history = await _eventStore.GetEventsAsync(command.AccountId, cancellationToken);
-
-            if (!history.Any()) throw new KeyNotFoundException("Account not found.");
-
-            var account = BankAccount.LoadFromHistory(history);
-
-            account.Deposit(command.Amount, command.Reference);
-
-            var eventsToPublish = account.UncommittedEvents.ToList();
-
-            await _eventStore.AppendEventsAsync(command.AccountId, account.Version,account.UncommittedEvents, cancellationToken);
-
-            account.ClearUncommittedEvents();
-
-            // Broadcast to the generic bus.
-            foreach (var @event in eventsToPublish)
+            IList<BankEvent> history = new List<BankEvent>();
+            try
             {
-                if (@event is MoneyDepositedEvent depositedEvent)
-                    await _messageBus.PublishAsync(depositedEvent, cancellationToken);
+                history = await _eventStore.GetEventsAsync(command.AccountId, cancellationToken);
+
+                if (!history.Any()) throw new KeyNotFoundException("Account not found.");
+
+                var account = BankAccount.LoadFromHistory(history);
+
+                account.Deposit(command.Amount, command.Reference);
+
+                var eventsToPublish = account.UncommittedEvents.ToList();
+
+                await _eventStore.AppendEventsAsync(command.AccountId, account.Version, account.UncommittedEvents, cancellationToken);
+
+                account.ClearUncommittedEvents();
+
+                // Broadcast to the generic bus.
+                foreach (var @event in eventsToPublish)
+                {
+                    if (@event is MoneyDepositedEvent depositedEvent)
+                        await _messageBus.PublishAsync(depositedEvent, cancellationToken);
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[HANDLER ERROR] Deposit failed for account {command.AccountId}: {ex.Message}");
+
+                var currentAccountVersion = history.Any() ? history.Max(e => e.Version) : 0;
+                var failureEvent = new DepositMoneyFailedEvent
+                (
+                    command.AccountId,
+                    command.Amount,
+                    command.Reference,
+                    ex.Message.ToString(),
+                    currentAccountVersion
+                );
+
+                await _messageBus.PublishAsync(failureEvent, cancellationToken);
             }
         }
     }

@@ -20,8 +20,8 @@ namespace BankLedger.WriteProject.Application.Sagas
         NotStarted,
         WithdrawalStarted,
         WithdrawalCompleted,
-        CreditStarted,
         DepositCompleted,
+        CompensationStarted,
         FailedAndReversed
     }
 }

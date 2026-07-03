@@ -9,7 +9,7 @@ During end-to-end integration testing of the CQRS multi-account transfer workflo
 
 ## 2. Root Cause Analysis (The Architecture Inversion)
 
-A deep thread-line trace revealed that the system was suffering from a combination of **Asynchronous Task Inversion** and **Polymorphic Container Erasure** inside the messaging layer.
+A deep thread-line trace revealed that the system was suffering from **Asynchronous Task Inversion** (causing the deposit event to reach Cosmos DB before the withdrawal event could complete its work) inside the messaging layer.
 
 ### 2.1 The Fire-and-Forget Race Condition
 The initial implementation of the `InMemoryMessageBus` utilized a fire-and-forget multi-threaded dispatch structure using `Task.Run()` to avoid blocking the primary Web API gateway thread, the bus relied heavily on dynamic runtime reflections:
@@ -33,7 +33,8 @@ The initial implementation of the `InMemoryMessageBus` utilized a fire-and-forge
          }
     }
 }
-         
+
+             /// remaining code
 ```
 This introduced a severe execution race condition. When a user triggered a transfer, the withdrawal event completed its MySQL save and was pushed to the bus. The bus kicked off a background task for the withdrawal and immediately released the thread. 
 
@@ -75,8 +76,6 @@ public async Task PublishAsync<TEvent>(TEvent @event, CancellationToken cancella
     }
 }
 ```
-The switch statement uses Compile-Time C# Pattern Matching. When C# hits case MoneyWithdrawnEvent withdrawnEvent, it explicitly casts the object into a strongly-typed instance right at the compiler boundary.
-The MoneyWithdrawnEvent hits Cosmos DB first, completes its calculation, saves the document, and only then does line 2 trigger the Saga to start the deposit. The race condition is eliminated because the timeline is locked.
 
 ---
 

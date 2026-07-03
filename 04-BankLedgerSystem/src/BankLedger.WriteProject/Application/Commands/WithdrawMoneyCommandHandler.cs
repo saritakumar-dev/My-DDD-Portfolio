@@ -4,12 +4,6 @@ using BankLedger.Core.Common.Events;
 using BankLedger.Core.Common.MessageBus;
 using BankLedger.WriteProject.Application.Common;
 using BankLedger.WriteProject.Domain.Aggregates;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Security.Principal;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace BankLedger.WriteProject.Application.Commands
 {

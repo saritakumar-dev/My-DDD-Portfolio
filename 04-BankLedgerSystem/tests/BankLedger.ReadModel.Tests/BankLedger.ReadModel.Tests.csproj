@@ -18,7 +18,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\src\BankLedger.WriteProject\BankLedger.WriteProject.csproj" />
+    <ProjectReference Include="..\..\src\BankLedger.ReadModel.Projection\BankLedger.ReadModel.Projection.csproj" />
   </ItemGroup>
 
   <ItemGroup>
