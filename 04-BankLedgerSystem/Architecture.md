@@ -47,3 +47,87 @@ graph TD
 
 ```
 
+### Clean Architecture Project Dependency Flow (Static View)
+
+```mermaid
+graph TD
+    %% Define Layers
+    subgraph Presentation_Layer [Presentation Layer]
+        API[BankLedger.WriteProject.API <br> Minimal API Endpoints]
+    end
+
+    subgraph Infrastructure_Layer [Infrastructure Layer]
+        DB[BankLedger.Infrastructure <br> MySQLEventStore / DbContext]
+    end
+
+    subgraph Application_Core [Application Core Layer]
+        Handlers[Explicit Command Handlers]
+        Saga[MoneyTransferSaga <br> Process Manager State Machine]
+        Bus[InMemoryMessageBus <br> Concrete Implementation]
+    end
+
+    subgraph Domain_Core [Domain Core Layer]
+        Agg[BankAccount Aggregate Root]
+        Events[Immutable Domain Events]
+    end
+
+    %% Define Flows (Strictly Inward)
+    API -->|Dispatches| Handlers
+    DB -->|Implements Repositories Used By| Handlers
+    DB -->|Implements Repositories Used By| Saga
+    Handlers -->|Invokes State Replay / Mutates| Agg
+    Agg -->|Generates| Events
+    Handlers -->|Publishes Events to Contract| Bus
+    Bus -->|Indirectly Resolves & Wakes Up| Saga
+
+    %% Styling
+    classDef domain fill:#1a5c6a,stroke:#333,stroke-width:2px,color:#fff;
+    classDef app fill:#2e6b5e,stroke:#333,stroke-width:2px,color:#fff;
+    classDef infra fill:#4a4e5d,stroke:#333,stroke-width:2px,color:#fff;
+    classDef pres fill:#7c4dff,stroke:#333,stroke-width:2px,color:#fff;
+
+    class Agg,Events domain;
+    class Handlers,Saga,Bus app;
+    class DB infra;
+    class API pres;
+
+```
+
+### Stateful Money Transfer Saga Workflow (Sequence View)
+
+```mermaid
+sequenceDiagram
+ autonumber
+    actor Client
+    participant API as Minimal API Gateway
+    participant Handler as WithdrawMoneyCommandHandler
+    participant DB as MySQLEventStore (ADO.NET)
+    participant Bus as InMemoryMessageBus
+    participant Saga as MoneyTransferSaga
+
+    Client->>API: POST /api/transfers (JSON Payload)
+    API->>Handler: HandleAsync(WithdrawMoneyCommand)
+    API-->>Client: Return HTTP 202 Accepted (Thread Released)
+
+    Note over Handler, DB: Begin Transaction (ReadCommitted)
+    Handler->>DB: Append Event Stream (ExecuteNonQueryAsync)
+    
+    alt Version Conflict (Race Condition caught via UQ Key)
+        DB-->>Handler: Throws MySqlException (Error 1062)
+        Handler->>DB: await transaction.RollbackAsync()
+        Handler-->>API: Bubble up InvalidOperationException
+    else Storage Verification Success
+        Handler->>DB: await transaction.CommitAsync()
+        DB-->>Handler: Stream Success Confirmed
+    end
+
+    Handler->>Bus: PublishAsync(MoneyWithdrawnEvent)
+    Note over Bus: Decoupled Dispatch Loop
+    Bus->>Saga: HandleAsync(MoneyWithdrawnEvent)
+    
+    Note over Saga, DB: Wakes up, loads SagaStates row
+    Saga->>Saga: Transition State to WithdrawalCompleted
+    Saga->>DB: Update SagaStates Table
+    Saga->>Handler: Invoke DepositMoneyCommandHandler Directly
+```
+
