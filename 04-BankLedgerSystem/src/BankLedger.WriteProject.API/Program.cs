@@ -33,6 +33,7 @@ builder.Services.AddScoped<IMessageBus, InMemoryMessageBus>();
 builder.Services.AddScoped<MoneyTransferSaga>();
 builder.Services.AddScoped<IDomainEventHandler<MoneyWithdrawnEvent>>(sp => sp.GetRequiredService<MoneyTransferSaga>());
 builder.Services.AddScoped<IDomainEventHandler<MoneyDepositedEvent>>(sp => sp.GetRequiredService<MoneyTransferSaga>());
+builder.Services.AddScoped<IDomainEventHandler<DepositMoneyFailedEvent>>(sp => sp.GetRequiredService<MoneyTransferSaga>());
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 

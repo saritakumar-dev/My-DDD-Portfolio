@@ -1,47 +1,61 @@
-﻿using BankLedger.Core.Common;
+﻿using BankLedger.Core.Common.Events;
 using BankLedger.Core.Common.MessageBus;
-using Microsoft.Extensions.DependencyInjection;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+using BankLedger.ReadModel.Projection.Handlers;
+using BankLedger.WriteProject.Application.Sagas;
+
 
 namespace BankLedger.WriteProject.Infrastructure.Messaging
 {
     public class InMemoryMessageBus : IMessageBus
     {
-        private readonly IServiceProvider _serviceProvider;
+        private readonly AccountBalanceProjector _projector;
+        private readonly MoneyTransferSaga _saga;
 
-        public InMemoryMessageBus(IServiceProvider serviceProvider)
+        // Explicit DI: Inject both consumers directly on the exact same thread scope
+        public InMemoryMessageBus(AccountBalanceProjector projector, MoneyTransferSaga saga)
         {
-            _serviceProvider = serviceProvider;
+            _projector = projector;
+            _saga = saga;
         }
         public async Task PublishAsync<TEvent>(TEvent @event, CancellationToken cancellationToken = default) where TEvent : class
         {
-            var runtimeType = @event.GetType();
-
-            var handlerInterfaceType = typeof(IDomainEventHandler<>).MakeGenericType(runtimeType);
-
-            var handlers = _serviceProvider.GetServices<IDomainEventHandler<TEvent>>();
-
-            foreach (var handler in handlers)
+            try
             {
-                var method = handlerInterfaceType.GetMethod("HandleAsync");
-                if (method != null)
+                // Sequential Routing: Deliver each event type to BOTH the read projector and the saga process manager
+                switch (@event)
                 {
-                    var invocationResult = method.Invoke(handler , new object[] {@event, cancellationToken});
+                    case AccountOpenedEvent openedEvent:
+                        // 1. Update the Cosmos DB read cache
+                        await _projector.HandleAsync(openedEvent, cancellationToken);
+                        break;
 
-                    if (invocationResult is Task task)
-                    {
-                        await task;
-                    }
-                    else
-                    {
-                        throw new InvalidOperationException($"Handler for event {@event.GetType().Name} did not return a valid Task.");
-                    }
+                    case MoneyWithdrawnEvent withdrawnEvent:
+                        // 1. Update the Cosmos DB read cache (Subtract balance)
+                        await _projector.HandleAsync(withdrawnEvent, cancellationToken);
+                        // 2. Notify the Saga to advance to the Deposit step
+                        await _saga.HandleAsync(withdrawnEvent, cancellationToken);
+                        break;
+
+                    case MoneyDepositedEvent depositedEvent:
+                        // 1. Update the Cosmos DB read cache (Add balance / Handle reversal)
+                        await _projector.HandleAsync(depositedEvent, cancellationToken);
+                        // 2. Notify the Saga to finalize the milestone check
+                        await _saga.HandleAsync(depositedEvent, cancellationToken);
+                        break;
+
+                    case DepositMoneyFailedEvent failedEvent:
+                        // 1. Notify the Saga to trigger the Compensating Transaction (Refund)
+                        await _saga.HandleAsync(failedEvent, cancellationToken);
+                        break;
                 }
             }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[MESSAGE BUS ERROR] Failed to route event {@event.GetType().Name}: {ex.Message}");
+            }
+
+            await Task.CompletedTask;
         }
     }
+
 }

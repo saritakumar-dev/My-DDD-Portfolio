@@ -10,5 +10,6 @@
     <Project Path="tests/BankLedger.Application.Tests/BankLedger.Application.Tests.csproj" />
     <Project Path="tests/BankLedger.Domain.Tests/BankLedger.Domain.Tests.csproj" />
     <Project Path="tests/BankLedger.Infrastructure.Tests/BankLedger.Infrastructure.Tests.csproj" />
+    <Project Path="tests/BankLedger.ReadModel.Tests/BankLedger.ReadModel.Tests.csproj" Id="ed38cbf3-975c-4f80-97fa-2e9b53e77c76" />
   </Folder>
 </Solution>

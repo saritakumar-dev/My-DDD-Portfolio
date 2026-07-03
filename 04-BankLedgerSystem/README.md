@@ -19,6 +19,10 @@ To simulate a real-world enterprise system expansion, this repository follows a 
 *   **Focus:** Deconstructing the write side via out-of-process messaging and horizontal scaling.
 *   **Planned Changes:** Offloading inbound commands to distributed message brokers (RabbitMQ/Kafka) and projecting asynchronous, denormalized read-models into a fast cache tier (Redis/NoSQL).
 
+### 🛠️ Deep Technical Troubleshooting Logs
+* Read our post-mortem analysis on how we resolved [Asynchronous Event Inversion & Scope Corruption](./Troubleshooting_Chronological_Inversion.md) inside the custom message bus.
+
+
 ---
 
 ## 📂 System Architecture & Directory Layout

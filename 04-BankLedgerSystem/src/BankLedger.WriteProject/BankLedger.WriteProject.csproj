@@ -18,6 +18,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\BankLedger.Core\BankLedger.Core.csproj" />
+    <ProjectReference Include="..\BankLedger.ReadModel.Projection\BankLedger.ReadModel.Projection.csproj" />
   </ItemGroup>
 
 </Project>

@@ -10,6 +10,9 @@ namespace BankLedger.ReadModel.Projection.Common.Models
         [JsonProperty("aggregateid")]
         public string AggregateId {  get; init; }= string.Empty;
 
+        [JsonProperty("partitionKey")]
+        public string PartitionKey { get; set; } = string.Empty;
+
         [JsonProperty("customerName")]
         public string CustomerName {  get; init; }= string.Empty;
 
