@@ -12,6 +12,7 @@ using BankLedger.WriteProject.Infrastructure.Messaging;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Azure.Cosmos;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -24,7 +25,7 @@ builder.Services.AddDbContext<BankWriteDbContext>(options =>
     options.UseMySql(connectionString, ServerVersion.AutoDetect(connectionString),
         b => b.MigrationsAssembly("BankLedger.Infrastructure")));
 
-builder.Services.AddScoped<IEventStore>(serviceProvider => new MySQLEventStore(connectionString));
+builder.Services.AddScoped<IEventStore>(serviceProvider => new MySqlEventStore(connectionString));
 builder.Services.AddScoped<ISagaStateRepository, SagaStateRepository>();
 builder.Services.AddScoped<ICommandHandler<OpenAccountCommand>, OpenAccountCommandHandler>();
 builder.Services.AddScoped<ICommandHandler<WithdrawMoneyCommand>, WithdrawMoneyCommandHandler>();
@@ -34,6 +35,7 @@ builder.Services.AddScoped<MoneyTransferSaga>();
 builder.Services.AddScoped<IDomainEventHandler<MoneyWithdrawnEvent>>(sp => sp.GetRequiredService<MoneyTransferSaga>());
 builder.Services.AddScoped<IDomainEventHandler<MoneyDepositedEvent>>(sp => sp.GetRequiredService<MoneyTransferSaga>());
 builder.Services.AddScoped<IDomainEventHandler<DepositMoneyFailedEvent>>(sp => sp.GetRequiredService<MoneyTransferSaga>());
+builder.Services.AddScoped<ISnapshotStore>(serviceProvider => new MySqlSnapshotStore(connectionString));
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 

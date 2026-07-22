@@ -12,23 +12,37 @@ namespace BankLedger.WriteProject.Application.Commands
     {
         private readonly IEventStore _eventStore;
         private readonly IMessageBus _messageBus;
-
-        public DepositMoneyCommandHandler(IEventStore eventStore, IMessageBus messageBus)
+        private readonly ISnapshotStore _snapshotStore;
+        private readonly int _snapshotInterval;
+        public DepositMoneyCommandHandler(IEventStore eventStore, IMessageBus messageBus, 
+            ISnapshotStore snapshotStore, 
+            int snapshotInterval = 100)
         {
             _eventStore = eventStore;
             _messageBus = messageBus;
+            _snapshotStore = snapshotStore;
+            _snapshotInterval = snapshotInterval;
         }
 
         public async Task HandleAsync(DepositMoneyCommand command, CancellationToken cancellationToken)
         {
             IList<BankEvent> history = new List<BankEvent>();
+            BankAccount? account = null;
             try
             {
-                history = await _eventStore.GetEventsAsync(command.AccountId, cancellationToken);
+                var snapshot = await _snapshotStore.GetLatestAsync(command.AccountId);
+                int startingVersion = 0;
+                if (snapshot != null)
+                {
+                    account = BankAccount.FromSnapshot(snapshot);
+                    startingVersion = snapshot.Version;
+                }
+
+                history = await _eventStore.GetEventsAsync(command.AccountId, startingVersion, cancellationToken);
 
                 if (!history.Any()) throw new KeyNotFoundException("Account not found.");
 
-                var account = BankAccount.LoadFromHistory(history);
+                account = BankAccount.LoadFromHistory(history);
 
                 account.Deposit(command.Amount, command.Reference);
 
@@ -37,6 +51,17 @@ namespace BankLedger.WriteProject.Application.Commands
                 await _eventStore.AppendEventsAsync(command.AccountId, account.Version, account.UncommittedEvents, cancellationToken);
 
                 account.ClearUncommittedEvents();
+
+                // Snapshot Evaluation and Creation Strategy
+
+                if (account.Version % _snapshotInterval == 0)
+                {
+                    // Extract the state snapshot from the aggregate
+                    var newSnapshot = account.CreateSnapshot();
+
+                    // Save it to your MySQL snapshots table
+                    await _snapshotStore.SaveAsync(newSnapshot);
+                }
 
                 // Broadcast to the generic bus.
                 foreach (var @event in eventsToPublish)

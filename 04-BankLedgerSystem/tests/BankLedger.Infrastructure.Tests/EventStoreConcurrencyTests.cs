@@ -16,7 +16,7 @@ namespace BankLedger.Infrastructure.Tests
         [Fact]
         public async Task AppendEvents_SimultaneousDuplicateVersions_ShouldThrowConcurrencyException()
         {
-            var eventStore = new MySQLEventStore(TestConnectionString);
+            var eventStore = new MySqlEventStore(TestConnectionString);
             var accountId = Guid.NewGuid();
 
             var initialEvent = new AccountOpenedEvent(accountId, "Concurrency Tester", "USD", 1);

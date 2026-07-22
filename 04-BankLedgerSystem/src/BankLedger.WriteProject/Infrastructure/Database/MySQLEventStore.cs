@@ -6,11 +6,11 @@ using System.Text.Json;
 
 namespace BankLedger.WriteProject.Infrastructure.Database
 {
-    public class MySQLEventStore : IEventStore
+    public class MySqlEventStore : IEventStore
     {
         private readonly string _connectionString;
         private static readonly JsonSerializerOptions _jsonOptions = new() { PropertyNamingPolicy = JsonNamingPolicy.CamelCase };
-        public MySQLEventStore(string connectionString)
+        public MySqlEventStore(string connectionString)
         {
             _connectionString = connectionString;
         }
@@ -65,7 +65,7 @@ namespace BankLedger.WriteProject.Infrastructure.Database
             }
         }
 
-        public async Task<List<BankEvent>> GetEventsAsync(Guid aggregateId, CancellationToken cancellationToken = default)
+        public async Task<List<BankEvent>> GetEventsAsync(Guid aggregateId, int version, CancellationToken cancellationToken = default)
         {
             var events = new List<BankEvent>();
 
@@ -73,11 +73,12 @@ namespace BankLedger.WriteProject.Infrastructure.Database
 
             await connection.OpenAsync(cancellationToken);
 
-            const string query = "SELECT EventType, EventData FROM EventStore where AggregateId = @aggregateId ORDER BY Version Asc";
+            const string query = "SELECT EventType, EventData, Version FROM EventStore where AggregateId = @aggregateId and Version > @version ORDER BY Version Asc";
 
             using var command = new MySqlCommand(query, connection);
 
             command.Parameters.AddWithValue("@AggregateId", aggregateId.ToString());
+            command.Parameters.AddWithValue("@Version", version);
 
             using var reader = await command.ExecuteReaderAsync(cancellationToken);
 

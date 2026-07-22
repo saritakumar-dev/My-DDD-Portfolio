@@ -7,6 +7,7 @@
     <Project Path="src/BankLedger.WriteProject/BankLedger.WriteProject.csproj" />
   </Folder>
   <Folder Name="/tests/">
+    <Project Path="BankLedger.IntegrationTests/BankLedger.IntegrationTests.csproj" Id="3c9b5440-0839-484a-a8f7-420b7fcc5d2b" />
     <Project Path="tests/BankLedger.Application.Tests/BankLedger.Application.Tests.csproj" />
     <Project Path="tests/BankLedger.Domain.Tests/BankLedger.Domain.Tests.csproj" />
     <Project Path="tests/BankLedger.Infrastructure.Tests/BankLedger.Infrastructure.Tests.csproj" />

@@ -41,6 +41,31 @@ namespace BankLedger.WriteProject.Domain.Aggregates
             return account;
         }
 
+        public static BankAccount FromSnapshot(BankAccountSnapshot snapshot)
+        {
+            var account = new BankAccount()
+            {
+                Id = snapshot.AggregateId,
+                Version = snapshot.Version,
+                Balance = snapshot.Balance,
+                Currency = snapshot.Currency,
+            };
+
+            return account;
+        }
+
+        public BankAccountSnapshot CreateSnapshot()
+        {
+            return new BankAccountSnapshot()
+            {
+                AggregateId = this.Id,
+                Version = this.Version,
+                Balance = this.Balance,
+                Currency = this.Currency,
+                SnapshottedAt = DateTime.UtcNow
+            };
+        }
+
 
         // --- BUSINESS METHODS (Command Processing) ---
         public void Withdraw(decimal amount, string reference)
@@ -52,7 +77,7 @@ namespace BankLedger.WriteProject.Domain.Aggregates
             if (Balance - amount < 0)
                 throw new InvalidOperationException("Insufficient funds for this withdrawal.");
 
-            RaiseEvent(new MoneyWithdrawnEvent(Id, amount, reference, this.Version+1));
+            RaiseEvent(new MoneyWithdrawnEvent(Id, amount, reference, this.Version + 1));
 
         }
 
@@ -75,7 +100,7 @@ namespace BankLedger.WriteProject.Domain.Aggregates
         {
             _uncommittedEvents.Add(@event);
             ApplyEvent(@event);
-            Version=@event.Version;
+            Version = @event.Version;
         }
 
         private void ApplyEvent(BankEvent @event)
