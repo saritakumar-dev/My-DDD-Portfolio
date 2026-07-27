@@ -9,8 +9,10 @@ namespace BankLedger.WriteProject.Infrastructure.Database
     public class MySqlEventStore : IEventStore
     {
         private readonly string _connectionString;
-        private static readonly JsonSerializerOptions _jsonOptions = new() { PropertyNamingPolicy = JsonNamingPolicy.CamelCase };
-        public MySqlEventStore(string connectionString)
+        private readonly ICryptoKeyVault _keyVault;
+        private readonly JsonSerializerOptions _jsonOptions ;//{ PropertyNamingPolicy = JsonNamingPolicy.CamelCase };
+
+        public MySqlEventStore(string connectionString, ICryptoKeyVault keyVault)
         {
             _connectionString = connectionString;
         }
