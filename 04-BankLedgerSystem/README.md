@@ -103,6 +103,19 @@ Because the core domain logic is entirely decoupled from external frameworks and
 
 ---
 
+### Performance Optimization: Snapshot Pattern
+
+To prevent an $O(N)$ performance bottleneck during aggregate state reconstruction from the immutable event store stream, this system implements a State Snapshotting optimization.
+
+#### Architectural Mechanics:
+1. **Automated Serialization**: During command handling execution, if an aggregate's version crosses a designated threshold interval ($Version \pmod{100} == 0$), a flat state checkpoint is generated.
+2. **High-Throughput Storage**: The checkpoint is persisted to a dedicated MySQL `BankAccountSnapshots` table using highly-optimized, low-overhead native ADO.NET query commands.
+3. **Delta Catch-Up Stream**: When a command handler initializes an aggregate lookup, it executes an $O(1)$ query to retrieve the absolute latest snapshot. If a snapshot is resolved (e.g., at Version 100), the repository initializes the aggregate at that point-in-time and executes a highly targetted event store index lookup (`Version > 100`) to replay only the trailing delta event stream.
+
+This ensures constant-time execution paths ($O(1)$ database read metrics) independent of the historical transaction volume or aggregate lifespan.
+
+---
+
 ## 🛠️ Local Development & Quick Start
 
 ### Prerequisites
