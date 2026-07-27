@@ -2,13 +2,12 @@
 using BankLedger.Core.Common.Commands;
 using BankLedger.Core.Common.Events;
 using BankLedger.Core.Common.MessageBus;
+using BankLedger.Domain;
 using BankLedger.WriteProject.Application.Common;
 using BankLedger.WriteProject.Domain.Aggregates;
 
 namespace BankLedger.WriteProject.Application.Commands
 {
-
-
     public class WithdrawMoneyCommandHandler : ICommandHandler<WithdrawMoneyCommand>
     {
         private readonly IEventStore _eventStore;
@@ -36,6 +35,8 @@ namespace BankLedger.WriteProject.Application.Commands
                     account = BankAccount.FromSnapshot(snapshot);
                     startingVersion = snapshot.Version;
                 }
+
+                AmbientContext.CurrentAggregateId= command.AccountId;
 
                 history = await _eventStore.GetEventsAsync(command.AccountId, startingVersion, cancellationToken);
 
@@ -70,6 +71,4 @@ namespace BankLedger.WriteProject.Application.Commands
             finally { account?.ClearUncommittedEvents(); }
         }
     }
-
-
 }

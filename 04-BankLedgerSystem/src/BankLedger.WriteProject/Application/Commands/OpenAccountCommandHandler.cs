@@ -2,6 +2,7 @@
 using BankLedger.Core.Common.Commands;
 using BankLedger.Core.Common.Events;
 using BankLedger.Core.Common.MessageBus;
+using BankLedger.Domain;
 using BankLedger.WriteProject.Application.Common;
 using BankLedger.WriteProject.Domain.Aggregates;
 

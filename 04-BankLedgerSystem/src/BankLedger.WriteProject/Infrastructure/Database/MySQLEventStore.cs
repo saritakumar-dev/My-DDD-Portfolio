@@ -1,4 +1,5 @@
 ﻿using BankLedger.Core.Common.Events;
+using BankLedger.Domain;
 using BankLedger.WriteProject.Application.Common;
 using MySql.Data.MySqlClient;
 using System.Data;
@@ -9,15 +10,24 @@ namespace BankLedger.WriteProject.Infrastructure.Database
     public class MySqlEventStore : IEventStore
     {
         private readonly string _connectionString;
-        private readonly ICryptoKeyVault _keyVault;
-        private readonly JsonSerializerOptions _jsonOptions ;//{ PropertyNamingPolicy = JsonNamingPolicy.CamelCase };
+        private readonly JsonSerializerOptions _jsonOptions ;
 
         public MySqlEventStore(string connectionString, ICryptoKeyVault keyVault)
         {
             _connectionString = connectionString;
+            _jsonOptions = new JsonSerializerOptions
+            {
+                PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
+
+                WriteIndented = false
+            };
+            _jsonOptions.Converters.Add(new GdprEncryptionConverterFactory(keyVault));
         }
         public async Task AppendEventsAsync(Guid aggregateId, int expectedVersion, IEnumerable<BankEvent> events, CancellationToken cancellationToken)
         {
+            // Set the thread-local context boundary
+            AmbientContext.CurrentAggregateId = aggregateId;
+
             using var connection = new MySqlConnection(_connectionString);
             await connection.OpenAsync(cancellationToken);
 
@@ -64,6 +74,11 @@ namespace BankLedger.WriteProject.Infrastructure.Database
             {
                 await transaction.RollbackAsync(cancellationToken);
                 throw;
+            }
+            finally
+            {
+                //  Clear memory boundary safety
+                AmbientContext.CurrentAggregateId = Guid.Empty;
             }
         }
 

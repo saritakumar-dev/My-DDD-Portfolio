@@ -2,6 +2,7 @@
 using BankLedger.Core.Common.Commands;
 using BankLedger.Core.Common.Events;
 using BankLedger.Core.Common.MessageBus;
+using BankLedger.Domain;
 using BankLedger.WriteProject.Application.Common;
 using BankLedger.WriteProject.Domain.Aggregates;
 
@@ -38,6 +39,10 @@ namespace BankLedger.WriteProject.Application.Commands
                     startingVersion = snapshot.Version;
                 }
 
+                AmbientContext.CurrentAggregateId = command.AccountId;
+
+                // Load trailing history. This triggers the JSON deserializer options copy
+                // to fetch the AES decryption keys if any [GdprEncrypted] fields are found.
                 history = await _eventStore.GetEventsAsync(command.AccountId, startingVersion, cancellationToken);
 
                 if (!history.Any()) throw new KeyNotFoundException("Account not found.");

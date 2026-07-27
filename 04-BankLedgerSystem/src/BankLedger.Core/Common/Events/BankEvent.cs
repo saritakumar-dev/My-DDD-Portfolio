@@ -18,6 +18,7 @@ namespace BankLedger.Core.Common.Events
 
     public record AccountOpenedEvent : BankEvent
     {
+        [GdprEncrypted]
         public string CustomerName { get; init; } = string.Empty;
         public string Currency { get; init; } = string.Empty;
         public AccountOpenedEvent() { }
@@ -72,6 +73,19 @@ namespace BankLedger.Core.Common.Events
             Amount = amount;
             Reference = reference;
             Reason = reason;
+        }
+    }
+
+    public record UserForgottenEvent : BankEvent
+    {
+        
+        public DateTime ErasedAt {  get; init; }
+
+        public UserForgottenEvent() { }
+
+        public UserForgottenEvent(Guid accountId, int version): base(accountId, version)
+        {
+            ErasedAt = DateTime.UtcNow;
         }
     }
 }

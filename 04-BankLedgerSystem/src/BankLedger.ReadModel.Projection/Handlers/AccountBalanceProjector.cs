@@ -8,7 +8,8 @@ namespace BankLedger.ReadModel.Projection.Handlers
 {
     public class AccountBalanceProjector : IDomainEventHandler<AccountOpenedEvent>,
                                            IDomainEventHandler<MoneyDepositedEvent>,
-                                           IDomainEventHandler<MoneyWithdrawnEvent>
+                                           IDomainEventHandler<MoneyWithdrawnEvent>,
+                                           IDomainEventHandler<UserForgottenEvent>
 
     {
         private readonly Container _container;
@@ -102,6 +103,22 @@ namespace BankLedger.ReadModel.Projection.Handlers
             catch (Exception ex)
             {
                 Console.WriteLine($"[CRITICAL PROJECTOR ERROR] Cosmos save failed: {ex.Message}");
+            }
+        }
+
+        public async Task HandleAsync(UserForgottenEvent @event, CancellationToken cancellationToken)
+        {
+            // Physically delete the mutable account balance document out of Cosmos DB cache
+            string id = @event.AggregateId.ToString();
+            var partitionKey = new PartitionKey(id);
+            try
+            {
+                await _container.DeleteItemAsync<AccountBalanceDocument>(id, partitionKey, null, cancellationToken);
+                Console.WriteLine($"Key {id} deleted successfully");
+            }
+            catch (CosmosException ex) when (ex.StatusCode == System.Net.HttpStatusCode.NotFound)
+            {
+                Console.WriteLine($"Key {id} was not found");
             }
         }
     }

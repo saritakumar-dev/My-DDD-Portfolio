@@ -12,7 +12,6 @@ using BankLedger.WriteProject.Infrastructure.Messaging;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Azure.Cosmos;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.DependencyInjection;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -25,11 +24,18 @@ builder.Services.AddDbContext<BankWriteDbContext>(options =>
     options.UseMySql(connectionString, ServerVersion.AutoDetect(connectionString),
         b => b.MigrationsAssembly("BankLedger.Infrastructure")));
 
-builder.Services.AddScoped<IEventStore>(serviceProvider => new MySqlEventStore(connectionString));
+builder.Services.AddScoped<ICryptoKeyVault>(serviceProvider => new MySqlCryptoKeyVault(connectionString));
+builder.Services.AddScoped<IEventStore>(serviceProvider =>
+{
+    var keyVault = serviceProvider.GetRequiredService<ICryptoKeyVault>();
+    return new MySqlEventStore(connectionString, keyVault);
+});
 builder.Services.AddScoped<ISagaStateRepository, SagaStateRepository>();
 builder.Services.AddScoped<ICommandHandler<OpenAccountCommand>, OpenAccountCommandHandler>();
 builder.Services.AddScoped<ICommandHandler<WithdrawMoneyCommand>, WithdrawMoneyCommandHandler>();
 builder.Services.AddScoped<ICommandHandler<DepositMoneyCommand>, DepositMoneyCommandHandler>();
+builder.Services.AddScoped<ICommandHandler<ForgetUserCommand>, ForgetUserCommandHandler>();
+
 builder.Services.AddScoped<IMessageBus, InMemoryMessageBus>();
 builder.Services.AddScoped<MoneyTransferSaga>();
 builder.Services.AddScoped<IDomainEventHandler<MoneyWithdrawnEvent>>(sp => sp.GetRequiredService<MoneyTransferSaga>());
@@ -141,6 +147,17 @@ app.MapPost("/api/transfer", async (
 .Produces(StatusCodes.Status202Accepted) // Explicitly state the responses for Swashbuckle
 .Produces(StatusCodes.Status400BadRequest);
 
+app.MapPost("/api/deleteaccount", async ([FromBody] DeleteAccountRequest request,
+                                            [FromServices] ICommandHandler<ForgetUserCommand> handler,
+                                            CancellationToken cancellationToken) =>
+{
+    if (Guid.Empty == request.AccountId)
+        return Results.BadRequest("Customer name is required.");
+
+    await handler.HandleAsync(new ForgetUserCommand(request.AccountId), cancellationToken);
+
+    return Results.Accepted();
+});
 
 app.Run();
 
@@ -150,3 +167,5 @@ public record OpenAccountRequest(string CustomerName, string Currency);
 public record DepositMoneyRequest(Guid AccountId, decimal Amount, string Reference);
 
 public record TransferRequest(Guid SourceAccountId, Guid TargetAccountId, decimal Amount);
+
+public record DeleteAccountRequest(Guid AccountId);

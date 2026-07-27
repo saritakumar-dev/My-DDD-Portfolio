@@ -47,6 +47,11 @@ namespace BankLedger.WriteProject.Infrastructure.Messaging
                         // 1. Notify the Saga to trigger the Compensating Transaction (Refund)
                         await _saga.HandleAsync(failedEvent, cancellationToken);
                         break;
+
+                    case UserForgottenEvent userForgottenEvent:
+                        // 1. Notify the Cosmos DB Container to delete the key
+                        await _projector.HandleAsync(userForgottenEvent, cancellationToken);
+                        break;
                 }
             }
             catch (Exception ex)
