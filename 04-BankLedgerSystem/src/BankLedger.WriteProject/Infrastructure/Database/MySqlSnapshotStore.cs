@@ -38,8 +38,7 @@ namespace BankLedger.WriteProject.Infrastructure.Database
                 {
                     AggregateId = aggregateId,
                     Version = reader.GetInt32(versionOrdinal),
-                    Balance = reader.GetDecimal(amountOrdinal),
-                    Currency = reader.GetString(currencyOrdinal),
+                    Balance = new Money(reader.GetDecimal(amountOrdinal), reader.GetString(currencyOrdinal)),
                     SnapshottedAt = reader.GetDateTime(dateOrdinal)
                 };
             }
@@ -58,8 +57,8 @@ namespace BankLedger.WriteProject.Infrastructure.Database
 
             command.Parameters.AddWithValue("@AggregateId", snapshot.AggregateId.ToString());
             command.Parameters.AddWithValue("@Version", snapshot.Version);
-            command.Parameters.AddWithValue("@BalanceAmount", snapshot.Balance);
-            command.Parameters.AddWithValue("@BalanceCurrency", snapshot.Currency);
+            command.Parameters.AddWithValue("@BalanceAmount", snapshot.Balance.Amount);
+            command.Parameters.AddWithValue("@BalanceCurrency", snapshot.Balance.Currency);
             command.Parameters.AddWithValue("@SnapshottedAt", snapshot.SnapshottedAt);
 
             await connection.OpenAsync();

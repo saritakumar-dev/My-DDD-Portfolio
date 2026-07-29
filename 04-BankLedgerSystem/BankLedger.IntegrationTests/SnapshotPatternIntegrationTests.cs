@@ -37,20 +37,20 @@ namespace BankLedger.IntegrationTests
             var currency = "EUR";
 
             await _openAccountCommandHandler.HandleAsync(new OpenAccountCommand(accountId,"alice", currency), CancellationToken.None);
-            await _depositMoneyCommandHandler.HandleAsync(new DepositMoneyCommand(accountId, 100, currency), CancellationToken.None);
+            await _depositMoneyCommandHandler.HandleAsync(new DepositMoneyCommand(accountId, 100, currency, "initial cash deposit"), CancellationToken.None);
 
             Assert.Equal(2, GetEventCount(accountId));
             Assert.Equal(0, GetSnapshotCount(accountId));
 
-            await _depositMoneyCommandHandler.HandleAsync(new DepositMoneyCommand(accountId, 20, currency), CancellationToken.None);
+            await _depositMoneyCommandHandler.HandleAsync(new DepositMoneyCommand(accountId, 20, currency, "cheque dpeosit"), CancellationToken.None);
             Assert.Equal(3, GetEventCount(accountId));
             Assert.Equal(1, GetSnapshotCount(accountId));
 
             var latestSnapshot = await _snapshotStore.GetLatestAsync(accountId);
             Assert.NotNull(latestSnapshot);
             Assert.Equal(3, latestSnapshot.Version);
-            Assert.Equal(120.00m, latestSnapshot.Balance); // 100 +  20
-            Assert.Equal("EUR", latestSnapshot.Currency);
+            Assert.Equal(120.00m, latestSnapshot.Balance.Amount); // 100 +  20
+            Assert.Equal("EUR", latestSnapshot.Balance.Currency);
         }
 
         #region Database Helper Methods

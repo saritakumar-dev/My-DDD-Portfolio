@@ -46,7 +46,7 @@ namespace BankLedger.ReadModel.Tests
                                 null, default)).ReturnsAsync(mockResponse.Object);
 
             // 2. WHEN: A delayed, out-of-order event arrives claiming Version 4 
-            var staleEvent = new MoneyDepositedEvent(accountId, 100.00m, "test cash deposit", 4);
+            var staleEvent = new MoneyDepositedEvent(accountId, 100.00m, "USD", "test cash deposit", 4);
             await _projector.HandleAsync(staleEvent, CancellationToken.None);
 
             // 3. THEN: The denormalizer must safely drop the event and NEVER call UpsertItemAsync

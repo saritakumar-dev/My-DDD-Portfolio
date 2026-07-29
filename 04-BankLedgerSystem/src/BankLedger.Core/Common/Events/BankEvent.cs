@@ -36,13 +36,16 @@ namespace BankLedger.Core.Common.Events
     {
         public decimal Amount { get; init; }
 
+        public string Currency { get; init; }
+
         public string Reference { get; init; } = string.Empty;
 
         public MoneyWithdrawnEvent() { }
 
-        public MoneyWithdrawnEvent(Guid accountId, decimal amount, string reference, int version) : base(accountId, version)
+        public MoneyWithdrawnEvent(Guid accountId, decimal amount, string currency, string reference, int version) : base(accountId, version)
         {
             Amount = amount;
+            Currency = currency;
             Reference = reference;
         }
     }
@@ -50,14 +53,17 @@ namespace BankLedger.Core.Common.Events
     public record MoneyDepositedEvent : BankEvent
     {
         public decimal Amount { get; init; }
+
+        public string Currency { get; init; }
         public string Reference { get; init; } = string.Empty;
 
         public MoneyDepositedEvent() { }
 
-        public MoneyDepositedEvent(Guid accountId, decimal amount, string reference, int version)
+        public MoneyDepositedEvent(Guid accountId, decimal amount, string currency, string reference, int version)
             : base(accountId, version)
         {
             Amount = amount;
+            Currency = currency;
             Reference = reference;
         }
     }
@@ -65,6 +71,8 @@ namespace BankLedger.Core.Common.Events
     public record DepositMoneyFailedEvent : BankEvent
     {
         public decimal Amount { get; init; }
+
+        public string Currency { get; init; }
         public string Reference { get; init; } = string.Empty;
         public string Reason { get; init; } = string.Empty;
 

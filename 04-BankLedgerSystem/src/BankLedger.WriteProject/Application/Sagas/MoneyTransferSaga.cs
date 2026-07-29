@@ -12,14 +12,14 @@ namespace BankLedger.WriteProject.Application.Sagas
     {
         private readonly ISagaStateRepository _sagaStateRepository;
         private readonly IServiceProvider _serviceProvider;
-       
+
         public MoneyTransferSaga(IServiceProvider serviceProvider,
             ISagaStateRepository sagaStateRepository)
         {
             _serviceProvider = serviceProvider;
             _sagaStateRepository = sagaStateRepository;
         }
-        public async Task StartAsync(Guid sourceAccountId, Guid targetAccountId, decimal amount, CancellationToken cancellationToken)
+        public async Task StartAsync(Guid sourceAccountId, Guid targetAccountId, decimal amount, string currency, CancellationToken cancellationToken)
         {
             var sagaState = new MoneyTransferSagaState
             {
@@ -30,7 +30,7 @@ namespace BankLedger.WriteProject.Application.Sagas
             };
             await _sagaStateRepository.SaveAsync(sagaState, cancellationToken);
             var withdrawHandler = _serviceProvider.GetRequiredService<ICommandHandler<WithdrawMoneyCommand>>();
-            await withdrawHandler.HandleAsync(new WithdrawMoneyCommand(sourceAccountId, amount, $"Transfer out to {targetAccountId} | SagaId: {sagaState.SagaId}"), cancellationToken);
+            await withdrawHandler.HandleAsync(new WithdrawMoneyCommand(sourceAccountId, amount, currency, $"Transfer out to {targetAccountId} | SagaId: {sagaState.SagaId}"), cancellationToken);
         }
 
         public async Task HandleAsync(MoneyWithdrawnEvent @event, CancellationToken cancellationToken)
@@ -44,7 +44,7 @@ namespace BankLedger.WriteProject.Application.Sagas
             state.CurrentState = TransferWorkflowState.WithdrawalCompleted;
             await _sagaStateRepository.SaveAsync(state, cancellationToken);
 
-            var depositMoneyCommand = new DepositMoneyCommand(state.TargetAccountId, state.Amount, $"Transfer In | SagaId: {state.SagaId}");
+            var depositMoneyCommand = new DepositMoneyCommand(state.TargetAccountId, state.Amount, @event.Currency, $"Transfer In | SagaId: {state.SagaId}");
 
             var depositHandler = _serviceProvider.GetRequiredService<ICommandHandler<DepositMoneyCommand>>();
             await depositHandler.HandleAsync(depositMoneyCommand, cancellationToken);
@@ -86,7 +86,7 @@ namespace BankLedger.WriteProject.Application.Sagas
             await _sagaStateRepository.SaveAsync(state, cancellationToken);
 
             var refundCommand = new DepositMoneyCommand(state.SourceAccountId,
-                                                            state.Amount,
+                                                            state.Amount, @event.Currency,
                      $"REVERSAL: Transfer to {state.TargetAccountId} failed. Reason: {@event.Reason} | SagaId: {state.SagaId}"
                 );
 

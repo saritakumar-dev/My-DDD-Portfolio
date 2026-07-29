@@ -49,7 +49,7 @@ namespace BankLedger.WriteProject.Application.Commands
 
                 account = BankAccount.LoadFromHistory(history);
 
-                account.Deposit(command.Amount, command.Reference);
+                account.Deposit(command.Amount, command.Currency, command.Reference);
 
                 var eventsToPublish = account.UncommittedEvents.ToList();
 

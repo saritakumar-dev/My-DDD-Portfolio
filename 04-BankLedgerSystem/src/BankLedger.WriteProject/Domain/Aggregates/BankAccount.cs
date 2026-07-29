@@ -8,11 +8,11 @@ namespace BankLedger.WriteProject.Domain.Aggregates
 
         public int Version { get; private set; }
 
-        public decimal Balance { get; private set; }
 
         public string CustomerName { get; private set; }
 
-        public string Currency { get; private set; }
+
+        public Money Balance { get; private set; }
 
         private readonly List<BankEvent> _uncommittedEvents = new();
 
@@ -22,7 +22,7 @@ namespace BankLedger.WriteProject.Domain.Aggregates
         {
             if (string.IsNullOrWhiteSpace(customerName)) throw new ArgumentNullException("The customer cannot be empty");
 
-            RaiseEvent(new AccountOpenedEvent(accountId, customerName, currency, this.Version+1));
+            RaiseEvent(new AccountOpenedEvent(accountId, customerName, currency, this.Version + 1));
         }
 
         private BankAccount()
@@ -47,8 +47,7 @@ namespace BankLedger.WriteProject.Domain.Aggregates
             {
                 Id = snapshot.AggregateId,
                 Version = snapshot.Version,
-                Balance = snapshot.Balance,
-                Currency = snapshot.Currency,
+                Balance = new Money(snapshot.Balance.Amount, snapshot.Balance.Currency),
             };
 
             return account;
@@ -60,34 +59,32 @@ namespace BankLedger.WriteProject.Domain.Aggregates
             {
                 AggregateId = this.Id,
                 Version = this.Version,
-                Balance = this.Balance,
-                Currency = this.Currency,
+                Balance = new Money(this.Balance.Amount, this.Balance.Currency),
                 SnapshottedAt = DateTime.UtcNow
             };
         }
 
 
         // --- BUSINESS METHODS (Command Processing) ---
-        public void Withdraw(decimal amount, string reference)
+        public void Withdraw(decimal amount, string currency, string reference)
         {
             if (amount <= 0)
                 throw new ArgumentException("Withdrawal amount must be greater than zero.");
 
             // Business Rule / Invariant Protection
-            if (Balance - amount < 0)
+            if (Balance.Amount - amount < 0)
                 throw new InvalidOperationException("Insufficient funds for this withdrawal.");
 
-            RaiseEvent(new MoneyWithdrawnEvent(Id, amount, reference, this.Version + 1));
+            RaiseEvent(new MoneyWithdrawnEvent(Id, amount, currency, reference, this.Version + 1));
 
         }
 
-        public void Deposit(decimal amount, string reference)
+        public void Deposit(decimal amount, string currency, string reference)
         {
             if (amount <= 0)
                 throw new ArgumentException("Deposit amount must be greater than zero.");
 
-            RaiseEvent(new MoneyDepositedEvent(Id, amount, reference, this.Version + 1));
-
+            RaiseEvent(new MoneyDepositedEvent(Id, amount, currency, reference, this.Version + 1));
         }
 
         public void ClearUncommittedEvents()
@@ -110,14 +107,13 @@ namespace BankLedger.WriteProject.Domain.Aggregates
                 case AccountOpenedEvent e:
                     Id = e.AggregateId;
                     CustomerName = e.CustomerName;
-                    Currency = e.Currency;
-                    Balance = 0;
+                    Balance = new Money(0, e.Currency);
                     break;
                 case MoneyDepositedEvent e:
-                    this.Balance += e.Amount;
+                    Balance = Balance.Plus(new Money(e.Amount, e.Currency));
                     break;
                 case MoneyWithdrawnEvent e:
-                    this.Balance -= e.Amount;
+                    Balance = Balance.Minus(new Money(e.Amount, e.Currency));
                     break;
             }
         }

@@ -109,7 +109,7 @@ app.MapPost("/api/deposit", async (
     if (request.Amount <= 0)
         return Results.BadRequest("Amount can't be zero");
 
-    await handler.HandleAsync(new DepositMoneyCommand(request.AccountId, request.Amount, request.Reference), cancellationToken);
+    await handler.HandleAsync(new DepositMoneyCommand(request.AccountId, request.Amount, request.Currency, request.Reference), cancellationToken);
 
     return Results.Accepted();
 })
@@ -137,6 +137,7 @@ app.MapPost("/api/transfer", async (
         request.SourceAccountId,
         request.TargetAccountId,
         request.Amount,
+        request.Currency,
         cancellationToken
     );
 
@@ -164,8 +165,8 @@ app.Run();
 
 public record OpenAccountRequest(string CustomerName, string Currency);
 
-public record DepositMoneyRequest(Guid AccountId, decimal Amount, string Reference);
+public record DepositMoneyRequest(Guid AccountId, decimal Amount, string Currency, string Reference);
 
-public record TransferRequest(Guid SourceAccountId, Guid TargetAccountId, decimal Amount);
+public record TransferRequest(Guid SourceAccountId, Guid TargetAccountId, decimal Amount, string Currency);
 
 public record DeleteAccountRequest(Guid AccountId);

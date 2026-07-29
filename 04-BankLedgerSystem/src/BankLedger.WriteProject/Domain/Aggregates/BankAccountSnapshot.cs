@@ -6,8 +6,7 @@ namespace BankLedger.WriteProject.Domain.Aggregates
     {
         public Guid AggregateId { get; set; }
         public int Version { get; set; }
-        public decimal Balance { get; set; }
-        public string Currency { get; set; }
+        public Money Balance { get; set; }
         public DateTime SnapshottedAt { get; set; }
     }
 }

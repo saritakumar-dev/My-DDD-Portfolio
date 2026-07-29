@@ -44,7 +44,7 @@ namespace BankLedger.WriteProject.Application.Commands
 
                 account = BankAccount.LoadFromHistory(history);
 
-                account.Withdraw(command.Amount, command.Reference);
+                account.Withdraw(command.Amount, command.Currency, command.Reference);
 
                 var eventsToPublish = account.UncommittedEvents.ToList();
 
