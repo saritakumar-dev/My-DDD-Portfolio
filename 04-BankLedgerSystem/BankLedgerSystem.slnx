@@ -1,6 +1,6 @@
 <Solution>
   <Folder Name="/src/">
-    <Project Path="src/BankLedger.Core/BankLedger.Core.csproj" />
+    <Project Path="src/BankLedger.Core/BankLedger.Domain.csproj" />
     <Project Path="src/BankLedger.ReadModel.API/BankLedger.ReadModel.API.csproj" />
     <Project Path="src/BankLedger.ReadModel.Projection/BankLedger.ReadModel.Projection.csproj" />
     <Project Path="src/BankLedger.WriteProject.API/BankLedger.WriteProject.API.csproj" />

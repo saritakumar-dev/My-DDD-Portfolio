@@ -1,18 +1,12 @@
 ﻿using BankLedger.Core.Common;
-using BankLedger.Core.Common.Commands;
+using BankLedger.WriteProject.Application;
 using BankLedger.Core.Common.Events;
 using BankLedger.Core.Common.MessageBus;
-using BankLedger.Domain;
 using BankLedger.WriteProject.Application.Common;
-using BankLedger.WriteProject.Domain.Aggregates;
-using Org.BouncyCastle.Utilities.Collections;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Security.Principal;
+using BankLedger.Domain.Aggregates;
+using BankLedger.Domain.Common;
 
-
-namespace BankLedger.WriteProject.Application.Commands
+namespace BankLedger.WriteProject.Application.Handlers
 {
     public class ForgetUserCommandHandler : ICommandHandler<ForgetUserCommand>
     {

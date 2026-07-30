@@ -1,4 +1,5 @@
 ﻿using BankLedger.Domain;
+using BankLedger.Domain.Common;
 using System;
 using System.Collections.Generic;
 using System.Linq;

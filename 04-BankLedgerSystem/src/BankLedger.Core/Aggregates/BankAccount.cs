@@ -1,6 +1,8 @@
 ﻿using BankLedger.Core.Common.Events;
+using BankLedger.Domain.ValueObjects;
+using BankLedger.WriteProject.Domain.Aggregates;
 
-namespace BankLedger.WriteProject.Domain.Aggregates
+namespace BankLedger.Domain.Aggregates
 {
     public class BankAccount
     {

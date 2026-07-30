@@ -1,6 +1,6 @@
-using BankLedger.Core.Common.Commands;
 using BankLedger.Core.Common.MessageBus;
-using BankLedger.WriteProject.Application.Commands;
+using BankLedger.WriteProject.Application;
+using BankLedger.WriteProject.Application.Handlers;
 using BankLedger.WriteProject.Infrastructure.Database;
 using Moq;
 using MySql.Data.MySqlClient;

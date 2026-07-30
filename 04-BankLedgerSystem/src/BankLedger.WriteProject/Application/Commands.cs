@@ -1,4 +1,4 @@
-﻿namespace BankLedger.Core.Common.Commands
+﻿namespace BankLedger.WriteProject.Application
 {
     public record DepositMoneyCommand(Guid AccountId, decimal Amount, string Currency, string Reference);
     public record WithdrawMoneyCommand(Guid AccountId, decimal Amount, string Currency, string Reference);

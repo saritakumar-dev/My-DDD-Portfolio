@@ -2,6 +2,7 @@
 using BankLedger.WriteProject.Domain.Aggregates;
 using Xunit;
 using FluentAssertions;
+using BankLedger.Domain.Aggregates;
 namespace BankLedger.Domain.Tests
 {
     public class BankAccountDomainTests

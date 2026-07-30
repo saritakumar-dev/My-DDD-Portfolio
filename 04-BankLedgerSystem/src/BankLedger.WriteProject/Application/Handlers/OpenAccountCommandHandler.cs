@@ -1,12 +1,10 @@
 ﻿using BankLedger.Core.Common;
-using BankLedger.Core.Common.Commands;
 using BankLedger.Core.Common.Events;
 using BankLedger.Core.Common.MessageBus;
-using BankLedger.Domain;
+using BankLedger.Domain.Aggregates;
 using BankLedger.WriteProject.Application.Common;
-using BankLedger.WriteProject.Domain.Aggregates;
 
-namespace BankLedger.WriteProject.Application.Commands
+namespace BankLedger.WriteProject.Application.Handlers
 {
     public class OpenAccountCommandHandler : ICommandHandler<OpenAccountCommand>
     {

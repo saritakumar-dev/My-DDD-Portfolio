@@ -1,5 +1,5 @@
 ﻿
-namespace BankLedger.WriteProject.Domain.Aggregates
+namespace BankLedger.Domain.ValueObjects
 {
     public record Money
     {

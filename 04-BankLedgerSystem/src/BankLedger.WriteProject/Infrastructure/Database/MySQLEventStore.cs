@@ -1,5 +1,6 @@
 ﻿using BankLedger.Core.Common.Events;
 using BankLedger.Domain;
+using BankLedger.Domain.Common;
 using BankLedger.WriteProject.Application.Common;
 using MySql.Data.MySqlClient;
 using System.Data;

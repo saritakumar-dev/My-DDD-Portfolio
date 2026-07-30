@@ -12,7 +12,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\BankLedger.Core\BankLedger.Core.csproj" />
+    <ProjectReference Include="..\BankLedger.Core\BankLedger.Domain.csproj" />
   </ItemGroup>
 
 </Project>

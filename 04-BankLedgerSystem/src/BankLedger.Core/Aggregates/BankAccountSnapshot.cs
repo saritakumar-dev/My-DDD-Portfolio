@@ -1,5 +1,7 @@
 ﻿
 
+using BankLedger.Domain.ValueObjects;
+
 namespace BankLedger.WriteProject.Domain.Aggregates
 {
     public class BankAccountSnapshot

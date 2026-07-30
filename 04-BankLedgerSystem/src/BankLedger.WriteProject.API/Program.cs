@@ -1,11 +1,11 @@
 using Azure.Identity;
 using BankLedger.Core.Common;
-using BankLedger.Core.Common.Commands;
 using BankLedger.Core.Common.Events;
 using BankLedger.Core.Common.MessageBus;
 using BankLedger.ReadModel.Projection.Handlers;
-using BankLedger.WriteProject.Application.Commands;
+using BankLedger.WriteProject.Application;
 using BankLedger.WriteProject.Application.Common;
+using BankLedger.WriteProject.Application.Handlers;
 using BankLedger.WriteProject.Application.Sagas;
 using BankLedger.WriteProject.Infrastructure.Database;
 using BankLedger.WriteProject.Infrastructure.Messaging;

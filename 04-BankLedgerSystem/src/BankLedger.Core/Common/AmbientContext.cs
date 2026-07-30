@@ -1,5 +1,5 @@
 ﻿
-namespace BankLedger.Domain
+namespace BankLedger.Domain.Common
 {
     public static class AmbientContext
     {
