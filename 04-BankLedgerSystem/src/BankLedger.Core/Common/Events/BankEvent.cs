@@ -1,4 +1,6 @@
 ﻿
+using BankLedger.Domain.Common;
+
 namespace BankLedger.Core.Common.Events
 {
     public abstract record BankEvent
@@ -86,14 +88,17 @@ namespace BankLedger.Core.Common.Events
 
     public record UserForgottenEvent : BankEvent
     {
-        
-        public DateTime ErasedAt {  get; init; }
+        public DateTime ErasedAt { get; init; }
+
+        public ClosureReason Reason { get; init; }
 
         public UserForgottenEvent() { }
 
-        public UserForgottenEvent(Guid accountId, int version): base(accountId, version)
+        public UserForgottenEvent(Guid accountId, int version, ClosureReason closureReason) : base(accountId, version)
         {
             ErasedAt = DateTime.UtcNow;
+            Reason = closureReason;
         }
     }
 }
+

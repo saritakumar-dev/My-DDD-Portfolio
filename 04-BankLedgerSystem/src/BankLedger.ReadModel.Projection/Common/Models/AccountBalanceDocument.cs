@@ -14,7 +14,7 @@ namespace BankLedger.ReadModel.Projection.Common.Models
         public string PartitionKey { get; set; } = string.Empty;
 
         [JsonProperty("customerName")]
-        public string CustomerName {  get; init; }= string.Empty;
+        public string CustomerName {  get; set; }= string.Empty;
 
         [JsonProperty("currentBalance")]
         public decimal CurrentBalance { get; set; }
@@ -24,5 +24,8 @@ namespace BankLedger.ReadModel.Projection.Common.Models
 
         [JsonProperty("lastProcessedVersion")]
         public int LastProcessedVersion { get; set; }
+
+        [JsonProperty("status")]
+        public string Status { get; set; }= string.Empty;
     }
 }

@@ -70,7 +70,7 @@ namespace BankLedger.IntegrationTests
             string rawPayloadFromDb = GetRawEventDataFromDatabase(accountId, version: 1);
             Assert.False(rawPayloadFromDb.Contains("John Doe")); // Cryptography validation
 
-            var command = new ForgetUserCommand(accountId);
+            var command = new ForgetUserCommand(accountId, ClosureReason.GdprRequest);
             await _forgetUserCommandhandler.HandleAsync(command, cancellationToken);
 
             const int expectedErasureVersion = 2;

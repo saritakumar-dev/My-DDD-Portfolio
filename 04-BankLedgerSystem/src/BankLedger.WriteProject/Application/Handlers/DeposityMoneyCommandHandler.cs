@@ -1,10 +1,11 @@
 ﻿using BankLedger.Core.Common;
-using BankLedger.WriteProject.Application;
 using BankLedger.Core.Common.Events;
 using BankLedger.Core.Common.MessageBus;
 using BankLedger.Domain.Aggregates;
 using BankLedger.Domain.Common;
+using BankLedger.WriteProject.Application;
 using BankLedger.WriteProject.Application.Common;
+using BankLedger.WriteProject.Application.Exceptions;
 
 
 namespace BankLedger.WriteProject.Application.Handlers
@@ -75,10 +76,13 @@ namespace BankLedger.WriteProject.Application.Handlers
                         await _messageBus.PublishAsync(depositedEvent, cancellationToken);
                 }
             }
+            catch (InvalidOperationException ex)
+            {
+                // Catch domain business rules violations
+                throw new ApplicationDomainException("Account Operation Rejected", ex.Message, 400);
+            }
             catch (Exception ex)
             {
-                Console.WriteLine($"[HANDLER ERROR] Deposit failed for account {command.AccountId}: {ex.Message}");
-
                 var currentAccountVersion = history.Any() ? history.Max(e => e.Version) : 0;
                 var failureEvent = new DepositMoneyFailedEvent
                 (

@@ -1,9 +1,10 @@
 ﻿using BankLedger.Core.Common;
 using BankLedger.Core.Common.Events;
 using BankLedger.Core.Common.MessageBus;
-using BankLedger.WriteProject.Application.Common;
 using BankLedger.Domain.Aggregates;
 using BankLedger.Domain.Common;
+using BankLedger.WriteProject.Application.Common;
+using BankLedger.WriteProject.Application.Exceptions;
 
 namespace BankLedger.WriteProject.Application.Handlers
 {
@@ -35,7 +36,7 @@ namespace BankLedger.WriteProject.Application.Handlers
                     startingVersion = snapshot.Version;
                 }
 
-                AmbientContext.CurrentAggregateId= command.AccountId;
+                AmbientContext.CurrentAggregateId = command.AccountId;
 
                 history = await _eventStore.GetEventsAsync(command.AccountId, startingVersion, cancellationToken);
 
@@ -66,6 +67,18 @@ namespace BankLedger.WriteProject.Application.Handlers
                     if (@event is MoneyWithdrawnEvent withdrawnEvent)
                         await _messageBus.PublishAsync(withdrawnEvent, cancellationToken);
                 }
+            }
+            catch (InvalidOperationException ex)
+            {
+                // Catch domain business rules violations
+                throw new ApplicationDomainException("Account Operation Rejected", ex.Message, 400);
+            }
+            catch (Exception)
+            {
+                throw new ApplicationDomainException(
+                 "Internal System Error",
+                 "An error occurred while communicating with backend infrastructure. Please contact support.",
+                 500);
             }
             finally { account?.ClearUncommittedEvents(); }
         }

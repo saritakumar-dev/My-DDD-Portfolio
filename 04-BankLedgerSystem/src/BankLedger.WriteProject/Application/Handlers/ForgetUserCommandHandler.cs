@@ -1,10 +1,10 @@
 ﻿using BankLedger.Core.Common;
-using BankLedger.WriteProject.Application;
 using BankLedger.Core.Common.Events;
 using BankLedger.Core.Common.MessageBus;
 using BankLedger.WriteProject.Application.Common;
 using BankLedger.Domain.Aggregates;
 using BankLedger.Domain.Common;
+using BankLedger.WriteProject.Application.Exceptions;
 
 namespace BankLedger.WriteProject.Application.Handlers
 {
@@ -20,7 +20,7 @@ namespace BankLedger.WriteProject.Application.Handlers
             _keyVault = keyVault;
             _eventStore = eventStore;
             _messageBus = messageBus;
-            _snapshotStore=snapshotStore;
+            _snapshotStore = snapshotStore;
         }
         public async Task HandleAsync(ForgetUserCommand command, CancellationToken cancellationToken)
         {
@@ -40,13 +40,16 @@ namespace BankLedger.WriteProject.Application.Handlers
                 if (!history.Any()) throw new KeyNotFoundException("Account not found.");
 
                 account = BankAccount.LoadFromHistory(history);
-                int version = account.Version + 1;
-                var erasureEvent = new UserForgottenEvent(command.AccountId, version);
 
-                var eventsToAppend = new List<BankEvent> { erasureEvent };
-                var eventsToPublish = eventsToAppend;
+                account.CloseAndAnonymizeAccount(command.ClosureReason);
 
-                await _eventStore.AppendEventsAsync(command.AccountId, version, eventsToAppend, cancellationToken);
+                //int version = account.Version + 1;
+                //var erasureEvent = new UserForgottenEvent(command.AccountId, version);
+
+                //var eventsToAppend = new List<BankEvent> { erasureEvent };
+                var eventsToPublish = account.UncommittedEvents.ToList();
+
+                await _eventStore.AppendEventsAsync(command.AccountId, account.Version, account.UncommittedEvents, cancellationToken);
                 await _keyVault.ShredKeyAsync(command.AccountId);
 
                 foreach (var @event in eventsToPublish)
@@ -54,6 +57,19 @@ namespace BankLedger.WriteProject.Application.Handlers
                     if (@event is UserForgottenEvent userForgottenEvent)
                         await _messageBus.PublishAsync(userForgottenEvent, cancellationToken);
                 }
+            }
+            catch (InvalidOperationException ex)
+            {
+                // Catch domain business rules violations
+                throw new ApplicationDomainException("Account Operation Rejected", ex.Message, 400);
+            }
+            catch (Exception ex)
+            {
+                throw new ApplicationDomainException(
+                 "Internal System Error",
+                 "An error occurred while communicating with backend infrastructure. Please contact support.",
+                 500
+             );
             }
             finally
             {

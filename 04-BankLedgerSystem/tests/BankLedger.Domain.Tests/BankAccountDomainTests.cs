@@ -1,8 +1,7 @@
 ﻿using BankLedger.Core.Common.Events;
-using BankLedger.WriteProject.Domain.Aggregates;
-using Xunit;
-using FluentAssertions;
 using BankLedger.Domain.Aggregates;
+using BankLedger.Domain.Common;
+using FluentAssertions;
 namespace BankLedger.Domain.Tests
 {
     public class BankAccountDomainTests
@@ -150,6 +149,58 @@ namespace BankLedger.Domain.Tests
             account.Balance.Amount.Equals(400.00m);
             account.Balance.Currency.Equals("EUR");
             account.UncommittedEvents.Count.Equals(0); // Historic replays do not pollute new uncommitted arrays
+        }
+
+        [Fact]
+        public void CloseAndAnonymizeAccount_Should_Succeed_And_Raise_UserForgottenEvent_With_Correct_Reason()
+        {
+            // Arrange: Rehydrate or instantiate an active account
+            var account = CreateAccount();
+            var expectedReason = ClosureReason.GdprRequest;
+
+            // Act
+            account.CloseAndAnonymizeAccount(expectedReason);
+
+            // Assert
+            account.IsClosed.Should().BeTrue();
+
+            // Verify the emitted domain event
+            account.UncommittedEvents.Should().HaveCount(2);
+            var raisedEvent = account.UncommittedEvents.First() as UserForgottenEvent;
+
+            raisedEvent.Should().NotBeNull();
+            raisedEvent!.Reason.Should().Be(expectedReason);
+            raisedEvent.ErasedAt.Should().BeCloseTo(DateTime.UtcNow, TimeSpan.FromSeconds(1));
+        }
+
+        [Fact]
+        public void CloseAndAnonymizeAccount_Should_Throw_Exception_If_Account_Is_Already_Closed()
+        {
+            // Arrange
+            var account = CreateAccount();
+            account.CloseAndAnonymizeAccount(ClosureReason.GdprRequest); // First closure
+
+            // Act
+            Action act = () => account.CloseAndAnonymizeAccount(ClosureReason.CustomerContractTerminated);
+
+            // Assert
+            act.Should().Throw<InvalidOperationException>()
+               .WithMessage("The account is already closed.");
+        }
+
+        [Fact]
+        public void Deposit_Should_Throw_Exception_If_Account_Is_Closed()
+        {
+            // Arrange
+            var account = CreateAccount();
+            account.CloseAndAnonymizeAccount(ClosureReason.GdprRequest);
+
+            // Act
+            Action act = () => account.Deposit(100.00m, "eur", "cash deposit");
+
+            // Assert
+            act.Should().Throw<InvalidOperationException>()
+               .WithMessage("Cannot deposit funds into a closed or anonymized account.");
         }
     }
 }

@@ -1,4 +1,5 @@
 ﻿using BankLedger.Core.Common.Events;
+using BankLedger.Domain.Common;
 using BankLedger.Domain.ValueObjects;
 using BankLedger.WriteProject.Domain.Aggregates;
 
@@ -10,11 +11,11 @@ namespace BankLedger.Domain.Aggregates
 
         public int Version { get; private set; }
 
-
         public string CustomerName { get; private set; }
 
-
         public Money Balance { get; private set; }
+
+        public bool IsClosed { get; private set; }
 
         private readonly List<BankEvent> _uncommittedEvents = new();
 
@@ -49,6 +50,7 @@ namespace BankLedger.Domain.Aggregates
             {
                 Id = snapshot.AggregateId,
                 Version = snapshot.Version,
+                IsClosed = snapshot.IsClosed,
                 Balance = new Money(snapshot.Balance.Amount, snapshot.Balance.Currency),
             };
 
@@ -61,6 +63,7 @@ namespace BankLedger.Domain.Aggregates
             {
                 AggregateId = this.Id,
                 Version = this.Version,
+                IsClosed = this.IsClosed,
                 Balance = new Money(this.Balance.Amount, this.Balance.Currency),
                 SnapshottedAt = DateTime.UtcNow
             };
@@ -70,6 +73,9 @@ namespace BankLedger.Domain.Aggregates
         // --- BUSINESS METHODS (Command Processing) ---
         public void Withdraw(decimal amount, string currency, string reference)
         {
+            if (this.IsClosed)
+                throw new InvalidOperationException("Cannot withdraw funds from a closed or anonymized account.");
+
             if (amount <= 0)
                 throw new ArgumentException("Withdrawal amount must be greater than zero.");
 
@@ -83,11 +89,31 @@ namespace BankLedger.Domain.Aggregates
 
         public void Deposit(decimal amount, string currency, string reference)
         {
+            if (this.IsClosed)
+                throw new InvalidOperationException("Cannot deposit funds into a closed or anonymized account.");
+
             if (amount <= 0)
                 throw new ArgumentException("Deposit amount must be greater than zero.");
 
             RaiseEvent(new MoneyDepositedEvent(Id, amount, currency, reference, this.Version + 1));
         }
+
+        public void CloseAndAnonymizeAccount(ClosureReason reason)
+        {
+            // 1. Enforce common state invariant
+            if (this.IsClosed)
+                throw new InvalidOperationException("The account is already closed.");
+
+            // 2. Enforce conditional business rules based on the reason if needed
+            if (reason == ClosureReason.CustomerContractTerminated && this.Balance.Amount != 0)
+            {
+                throw new InvalidOperationException("Cannot terminate a contract for an account with a remaining balance.");
+            }
+
+            // 3. Emit the single event with the dynamic reason
+            RaiseEvent(new UserForgottenEvent(Id, this.Version + 1, reason));
+        }
+
 
         public void ClearUncommittedEvents()
         {
@@ -116,6 +142,9 @@ namespace BankLedger.Domain.Aggregates
                     break;
                 case MoneyWithdrawnEvent e:
                     Balance = Balance.Minus(new Money(e.Amount, e.Currency));
+                    break;
+                case UserForgottenEvent e:
+                    IsClosed= true;
                     break;
             }
         }

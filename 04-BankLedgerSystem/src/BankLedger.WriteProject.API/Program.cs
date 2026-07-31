@@ -2,7 +2,9 @@ using Azure.Identity;
 using BankLedger.Core.Common;
 using BankLedger.Core.Common.Events;
 using BankLedger.Core.Common.MessageBus;
+using BankLedger.Domain.Common;
 using BankLedger.ReadModel.Projection.Handlers;
+using BankLedger.WriteProject.API.Middleware;
 using BankLedger.WriteProject.Application;
 using BankLedger.WriteProject.Application.Common;
 using BankLedger.WriteProject.Application.Handlers;
@@ -53,6 +55,9 @@ builder.Services.AddScoped<IDomainEventHandler<AccountOpenedEvent>>(sp => sp.Get
 builder.Services.AddScoped<IDomainEventHandler<MoneyDepositedEvent>>(sp => sp.GetRequiredService<AccountBalanceProjector>());
 builder.Services.AddScoped<IDomainEventHandler<MoneyWithdrawnEvent>>(sp => sp.GetRequiredService<AccountBalanceProjector>());
 
+builder.Services.AddProblemDetails();
+builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
+
 var app = builder.Build();
 
 // ==========================================
@@ -60,6 +65,8 @@ var app = builder.Build();
 // ==========================================
 // CRITICAL FIX: These MUST come immediately after builder.Build() 
 // and BEFORE any endpoints are mapped.
+
+app.UseExceptionHandler();
 
 if (app.Environment.IsDevelopment())
 {
@@ -111,12 +118,13 @@ app.MapPost("/api/deposit", async (
 
     await handler.HandleAsync(new DepositMoneyCommand(request.AccountId, request.Amount, request.Currency, request.Reference), cancellationToken);
 
-    return Results.Accepted();
+    return Results.Accepted();  //TODO : what should be standard return values here
 })
 .WithName("DepositMoney")
 .Produces(StatusCodes.Status202Accepted)
 .Produces(StatusCodes.Status400BadRequest);
 
+//TODO : Should we add a withdrawal here?
 
 app.MapPost("/api/transfer", async (
     TransferRequest request,
@@ -141,7 +149,7 @@ app.MapPost("/api/transfer", async (
         cancellationToken
     );
 
-    return Results.Accepted();
+    return Results.Accepted();  //TODO : what should be standard return values here
 })
 .WithName("InitiateTransfer")
 .WithOpenApi()
@@ -155,9 +163,9 @@ app.MapPost("/api/deleteaccount", async ([FromBody] DeleteAccountRequest request
     if (Guid.Empty == request.AccountId)
         return Results.BadRequest("Customer name is required.");
 
-    await handler.HandleAsync(new ForgetUserCommand(request.AccountId), cancellationToken);
+    await handler.HandleAsync(new ForgetUserCommand(request.AccountId, request.ClosureReason), cancellationToken);
 
-    return Results.Accepted();
+    return Results.Accepted(); //TODO : what should be standard return values here
 });
 
 app.Run();
@@ -169,4 +177,4 @@ public record DepositMoneyRequest(Guid AccountId, decimal Amount, string Currenc
 
 public record TransferRequest(Guid SourceAccountId, Guid TargetAccountId, decimal Amount, string Currency);
 
-public record DeleteAccountRequest(Guid AccountId);
+public record DeleteAccountRequest(Guid AccountId, ClosureReason ClosureReason);

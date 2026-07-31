@@ -113,8 +113,12 @@ namespace BankLedger.ReadModel.Projection.Handlers
             var partitionKey = new PartitionKey(id);
             try
             {
-                await _container.DeleteItemAsync<AccountBalanceDocument>(id, partitionKey, null, cancellationToken);
-                Console.WriteLine($"Key {id} deleted successfully");
+                var itemResponse = await _container.ReadItemAsync<AccountBalanceDocument>(id, partitionKey, null, cancellationToken);
+                var accountBalanceDocument = itemResponse.Resource;
+                accountBalanceDocument.Status = "Closed";
+                accountBalanceDocument.CustomerName = "GDPR-REDONE-USER";
+                await _container.UpsertItemAsync<AccountBalanceDocument>(accountBalanceDocument, partitionKey, null, cancellationToken);
+                Console.WriteLine($"Account withKey {id} closed successfully");
             }
             catch (CosmosException ex) when (ex.StatusCode == System.Net.HttpStatusCode.NotFound)
             {
