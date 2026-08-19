@@ -1,10 +1,10 @@
 ﻿
 namespace BankLedger.Domain.ValueObjects
 {
-    public record Money
+    public  record Money
     {
         public decimal Amount { get; init; }
-        public string Currency { get; init; }
+        public string Currency { get; init; } = string.Empty;
         public Money(decimal amount, string currency)
         {
             if (amount < 0)
@@ -17,6 +17,7 @@ namespace BankLedger.Domain.ValueObjects
             Currency = currency.ToUpper().Trim();
         }
 
+        public static Money Zero(string currency = "EUR") => new(0.00m, currency);
         public Money Plus(Money other)
         {
             EnsureSameCurrency(other);

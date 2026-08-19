@@ -1,69 +1,1 @@
-﻿
-using BankLedger.Core.Common;
-using BankLedger.Core.Common.Events;
-using BankLedger.WriteProject.Application;
-using BankLedger.WriteProject.Application.Common;
-using BankLedger.WriteProject.Application.Sagas;
-using Moq;
-
-namespace BankLedger.Application.Tests
-{
-    public class MoneyTransferSagaTests
-    {
-
-        private readonly MoneyTransferSaga _saga;
-        private readonly Mock<IServiceProvider> _mockServiceProvider;
-        private readonly Mock<ISagaStateRepository> _mockRepo;
-        private readonly Mock<ICommandHandler<DepositMoneyCommand>> _mockDepositHandler;
-        public MoneyTransferSagaTests()
-        {
-            _mockServiceProvider = new Mock<IServiceProvider>();
-            _mockRepo = new Mock<ISagaStateRepository>();
-            _mockDepositHandler = new Mock<ICommandHandler<DepositMoneyCommand>>();
-
-            _saga = new MoneyTransferSaga(_mockServiceProvider.Object, _mockRepo.Object);
-
-            _mockServiceProvider.Setup(p=>p.GetService(typeof(ICommandHandler<DepositMoneyCommand>)))
-                                           .Returns(_mockDepositHandler.Object);
-        }
-
-        [Fact]
-        public async Task HandleDepositFailed_ValidActiveSaga_ShouldTriggerSourceAccountRefundAndCompleteCompensation()
-        {
-            var sourceAccounId = Guid.NewGuid();
-            var targetAccounId = Guid.NewGuid();
-            var sagaId = Guid.NewGuid(); 
-
-            var existingState = new MoneyTransferSagaState
-            {
-                Amount = 150.00m,
-                SourceAccountId = sourceAccounId,
-                CurrentState = TransferWorkflowState.WithdrawalCompleted,
-                TargetAccountId = targetAccounId,
-                SagaId = sagaId,
-            };
-
-            _mockRepo
-                .Setup(r => r.GetStateBySagaIdAsync(sagaId, It.IsAny<CancellationToken>()))
-                .ReturnsAsync(existingState);
-
-            var failureEvent = new DepositMoneyFailedEvent(
-                accountId: targetAccounId,
-                amount: 150.00m,
-                reason: "Target account is closed.",
-                reference: $"Transfer In | SagaId:{sagaId}",
-                version: 2
-            );
-
-            await _saga.HandleAsync(failureEvent, CancellationToken.None);
-
-            _mockRepo.Verify(r => r.SaveAsync(It.Is<MoneyTransferSagaState>(s => s.CurrentState == TransferWorkflowState.FailedAndReversed),
-                                          It.IsAny<CancellationToken>()), Times.Exactly(2));
-
-            _mockDepositHandler.Verify(h => h.HandleAsync(It.Is<DepositMoneyCommand>(c => c.AccountId == sourceAccounId && c.Amount == 150.00m &&
-                                                                                    c.Reference.Contains("REVERSAL")), It.IsAny<CancellationToken>())
-                                                        , Times.Once);
-
-        }
-    }
-}
+﻿using BankLedger.Core.Common;using BankLedger.Core.Common.Events;using BankLedger.Domain.Common;using BankLedger.WriteProject.Application;using BankLedger.WriteProject.Application.Common;using BankLedger.WriteProject.Application.Common.Exceptions;using BankLedger.WriteProject.Application.Common.Models;using BankLedger.WriteProject.Application.Sagas;using FluentAssertions;using Moq;namespace BankLedger.Application.Tests{    public class MoneyTransferSagaTests    {        private readonly MoneyTransferSaga _saga;        private readonly Mock<IServiceProvider> _mockServiceProvider;        private readonly Mock<ISagaStateRepository> _mockRepo;        private readonly Mock<ICommandHandler<DepositMoneyCommand>> _mockDepositHandler;        private readonly Mock<IAccountReadModelService> _mockCosmosReadService;        private readonly Mock<ICommandHandler<PostJournalEntryCommand>> _mockPostJournalEntryHandler;        public MoneyTransferSagaTests()        {            _mockServiceProvider = new Mock<IServiceProvider>();            _mockRepo = new Mock<ISagaStateRepository>();            _mockDepositHandler = new Mock<ICommandHandler<DepositMoneyCommand>>();            _mockCosmosReadService = new Mock<IAccountReadModelService>();            _mockPostJournalEntryHandler = new Mock<ICommandHandler<PostJournalEntryCommand>>();            _saga = new MoneyTransferSaga(_mockServiceProvider.Object, _mockRepo.Object,                _mockCosmosReadService.Object);            _mockServiceProvider.Setup(p => p.GetService(typeof(ICommandHandler<DepositMoneyCommand>)))                                           .Returns(_mockDepositHandler.Object);            _mockServiceProvider.Setup(p => p.GetService(typeof(ICommandHandler<PostJournalEntryCommand>)))                                           .Returns(_mockPostJournalEntryHandler.Object);        }        [Fact]        public async Task HandleDepositFailed_ValidActiveSaga_ShouldTriggerSourceAccountRefundAndCompleteCompensation()        {            var sourceAccounId = Guid.NewGuid();            var targetAccounId = Guid.NewGuid();            var sagaId = Guid.NewGuid();            var existingState = new MoneyTransferSagaState            {                Amount = 150.00m,                SourceAccountId = sourceAccounId,                CurrentState = TransferWorkflowState.WithdrawalCompleted,                TargetAccountId = targetAccounId,                SagaId = sagaId,            };            _mockRepo                .Setup(r => r.GetStateBySagaIdAsync(sagaId, It.IsAny<CancellationToken>()))                .ReturnsAsync(existingState);            var failureEvent = new DepositMoneyFailedEvent(                accountId: targetAccounId,                amount: 150.00m,                reason: "Target account is closed.",                reference: $"Transfer In | SagaId:{sagaId}",                version: 2            );            await _saga.HandleAsync(failureEvent, CancellationToken.None);            _mockRepo.Verify(r => r.SaveAsync(It.Is<MoneyTransferSagaState>(s => s.CurrentState == TransferWorkflowState.FailedAndReversed),                                          It.IsAny<CancellationToken>()), Times.Exactly(2));            _mockDepositHandler.Verify(h => h.HandleAsync(It.Is<DepositMoneyCommand>(c => c.AccountId == sourceAccounId && c.Amount == 150.00m &&                                                                                    c.Reference.Contains("REVERSAL")), It.IsAny<CancellationToken>())                                                        , Times.Once);        }        [Fact]        public async Task HandleAsync_ShouldThrowInsufficientFundsException_WhenAggregatedDebitsExceedBalance()        {            var accountId = Guid.NewGuid();            var auxiliaryId = Guid.NewGuid();            var instructions = new List<MoneyTransferInstruction>            {                new(accountId, -60.00m, "Debit"),                new(accountId, -60.00m, "Credit"),                new(auxiliaryId, 120.00m, "Balancing Credit")            };            var mockState = new AccountStateResult(accountId, CurrentBalance: 100.00m, IsClosed: false);            _mockCosmosReadService                .Setup(x => x.GetAccountStateResultAsync(accountId, It.IsAny<CancellationToken>()))                .ReturnsAsync(mockState);            Func<Task> act = async () => await _saga.StartAsync(instructions, CancellationToken.None);            var exception = await act.Should().ThrowAsync<InsufficientFundsException>();            exception.Which.AccountId.Should().Be(accountId);            exception.Which.AvailableBalance.Should().Be(100.00m);            exception.Which.AttemptedDebit.Should().Be(120.00m);            _mockPostJournalEntryHandler.Verify(h => h.HandleAsync(It.IsAny<PostJournalEntryCommand>(), It.IsAny<CancellationToken>()), Times.Never);        }        [Fact]        public async Task HandleAsync_ShouldThrowAccountDeactivatedException_WhenAnyTargetAccountIsClosed()        {            // Arrange            var closedAccountId = Guid.NewGuid();            var activeAccountId = Guid.NewGuid();            var instructions = new List<MoneyTransferInstruction>                                        {                                            new(closedAccountId, -50.00m, "Debit"),                                            new(activeAccountId, 50.00m, "Credit")                                        };            var closedAccountState = new AccountStateResult(closedAccountId, CurrentBalance: 1000.00m, IsClosed: true);            var activeAccountState = new AccountStateResult(activeAccountId, CurrentBalance: 100.00m, IsClosed: false);            _mockCosmosReadService                .Setup(x => x.GetAccountStateResultAsync(closedAccountId, It.IsAny<CancellationToken>()))                .ReturnsAsync(closedAccountState);            _mockCosmosReadService               .Setup(x => x.GetAccountStateResultAsync(activeAccountId, It.IsAny<CancellationToken>()))               .ReturnsAsync(activeAccountState);            // Act            Func<Task> act = async () => await _saga.StartAsync(instructions, CancellationToken.None);            // Assert            var exception = await act.Should().ThrowAsync<AccountDeactivatedException>();            exception.Which.AccountId.Should().Be(closedAccountId);            _mockPostJournalEntryHandler.Verify(h => h.HandleAsync(It.IsAny<PostJournalEntryCommand>(), It.IsAny<CancellationToken>()), Times.Never);        }        [Fact]        public async Task HandleAsync_ShouldDispatchPostJournalEntryCommand_WhenAggregatedDebitsAreWithinBalanceAndBalanced()        {            // Arrange: Account A has €200. Account B has €500. Transferring €150 from A to B.            var accountIdA = Guid.NewGuid();            var accountIdB = Guid.NewGuid();            var instructions = new List<MoneyTransferInstruction>                                    {                                        new(accountIdA, -150.00m, "Payment Part 1"),                                        new(accountIdB, 150.00m, "Receipt Part 1")                                    };            var stateA = new AccountStateResult(accountIdA, CurrentBalance: 200.00m, IsClosed: false);            var stateB = new AccountStateResult(accountIdB, CurrentBalance: 500.00m, IsClosed: false);            // Mock lookups for both unique accounts returning active states with sufficient funds            _mockCosmosReadService                .Setup(x => x.GetAccountStateResultAsync(accountIdA, It.IsAny<CancellationToken>()))                .ReturnsAsync(stateA);            _mockCosmosReadService                .Setup(x => x.GetAccountStateResultAsync(accountIdB, It.IsAny<CancellationToken>()))                .ReturnsAsync(stateB);            // Act            Func<Task> act = async () => await _saga.StartAsync(instructions, CancellationToken.None);            // Assert: Verify no exception is thrown            await act.Should().NotThrowAsync();            // Verify exactly ONE combined command is sent down to the core write boundary            _mockPostJournalEntryHandler.Verify(                x => x.HandleAsync(                    It.Is<PostJournalEntryCommand>(cmd =>                        cmd.LedgerEntries.Count == 2 &&                        cmd.LedgerEntries.Any(e => e.AccountId == accountIdA && e.Amount == -150.00m) &&                        cmd.LedgerEntries.Any(e => e.AccountId == accountIdB && e.Amount == 150.00m)                    ),                    It.IsAny<CancellationToken>()                ),                Times.Once            );        }    }}

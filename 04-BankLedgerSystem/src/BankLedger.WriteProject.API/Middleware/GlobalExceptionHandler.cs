@@ -1,7 +1,6 @@
 ﻿using BankLedger.Domain.Common;
-using BankLedger.WriteProject.Application.Exceptions;
+using BankLedger.WriteProject.Application.Common.Exceptions;
 using Microsoft.AspNetCore.Diagnostics;
-using System.Text.Json;
 
 namespace BankLedger.WriteProject.API.Middleware
 {

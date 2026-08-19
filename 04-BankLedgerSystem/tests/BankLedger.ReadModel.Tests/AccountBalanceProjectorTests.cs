@@ -2,6 +2,7 @@ using BankLedger.Core.Common.Events;
 using BankLedger.ReadModel.Projection.Common.Models;
 using BankLedger.ReadModel.Projection.Handlers;
 using Microsoft.Azure.Cosmos;
+using Microsoft.Extensions.Logging;
 using Moq;
 using PartitionKey = Microsoft.Azure.Cosmos.PartitionKey;
 
@@ -12,14 +13,15 @@ namespace BankLedger.ReadModel.Tests
         private readonly Mock<Container> _mockContainer;
         private readonly Mock<CosmosClient> _mockClient;
         private readonly AccountBalanceProjector _projector;
-
+        private readonly Mock<ILogger<AccountBalanceProjector>> _mockLogger;
         public AccountBalanceProjectorTests()
         {
             _mockContainer = new Mock<Container>();
             _mockClient = new Mock<CosmosClient>();
+            _mockLogger= new Mock<ILogger<AccountBalanceProjector>>();
             _mockClient.Setup(m => m.GetContainer(It.IsAny<string>(), It.IsAny<string>()))
                        .Returns(_mockContainer.Object);
-            _projector = new AccountBalanceProjector(_mockClient.Object);
+            _projector = new AccountBalanceProjector(_mockClient.Object, _mockLogger.Object);
         }
 
 

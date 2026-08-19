@@ -1,4 +1,5 @@
-﻿using BankLedger.Domain.Common;
+﻿using BankLedger.Domain.Aggregates;
+using BankLedger.Domain.Common;
 
 namespace BankLedger.WriteProject.Application
 {
@@ -6,5 +7,6 @@ namespace BankLedger.WriteProject.Application
     public record WithdrawMoneyCommand(Guid AccountId, decimal Amount, string Currency, string Reference);
     public record OpenAccountCommand(Guid AccountId, string CustomerName, string Currency);
     public record ForgetUserCommand(Guid AccountId, ClosureReason ClosureReason);
+    public record PostJournalEntryCommand(Guid JournalEntryId, List<LedgerEntry> LedgerEntries);
 
 }

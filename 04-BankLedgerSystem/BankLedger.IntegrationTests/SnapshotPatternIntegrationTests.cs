@@ -2,6 +2,7 @@ using BankLedger.Core.Common.MessageBus;
 using BankLedger.WriteProject.Application;
 using BankLedger.WriteProject.Application.Handlers;
 using BankLedger.WriteProject.Infrastructure.Database;
+using Microsoft.Extensions.Logging;
 using Moq;
 using MySql.Data.MySqlClient;
 
@@ -15,14 +16,15 @@ namespace BankLedger.IntegrationTests
         private readonly Mock<IMessageBus> _messageBus;
         private readonly MySqlSnapshotStore _snapshotStore;
         private readonly ICryptoKeyVault _keyVault;
-
+        private readonly Mock<ILogger<MySqlEventStore>> _mockLogger;
         private readonly OpenAccountCommandHandler _openAccountCommandHandler;
         private readonly DepositMoneyCommandHandler _depositMoneyCommandHandler;
         public SnapshotPatternIntegrationTests()
         {
             _snapshotStore = new MySqlSnapshotStore(ConnectionString);
             _keyVault = new MySqlCryptoKeyVault(ConnectionString);
-            _eventStore = new MySqlEventStore(ConnectionString, _keyVault);
+            _mockLogger = new Mock<ILogger<MySqlEventStore>>();
+            _eventStore = new MySqlEventStore(ConnectionString, _keyVault, _mockLogger.Object);
             _messageBus = new Mock<IMessageBus>();
             // Injecting the ADO.NET dependencies directly into your handler
             _openAccountCommandHandler= new OpenAccountCommandHandler(_eventStore, _messageBus.Object);

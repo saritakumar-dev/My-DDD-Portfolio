@@ -52,6 +52,10 @@ namespace BankLedger.WriteProject.Infrastructure.Messaging
                         // 1. Notify the Cosmos DB Container to delete the key
                         await _projector.HandleAsync(userForgottenEvent, cancellationToken);
                         break;
+
+                    case JournalEntryPostedEvent journalEntryPostedEvent:
+                        await _projector.HandleAsync(journalEntryPostedEvent, cancellationToken);
+                        break;
                 }
             }
             catch (Exception ex)

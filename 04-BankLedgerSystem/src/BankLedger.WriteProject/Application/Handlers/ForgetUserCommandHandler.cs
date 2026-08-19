@@ -4,7 +4,7 @@ using BankLedger.Core.Common.MessageBus;
 using BankLedger.WriteProject.Application.Common;
 using BankLedger.Domain.Aggregates;
 using BankLedger.Domain.Common;
-using BankLedger.WriteProject.Application.Exceptions;
+using BankLedger.WriteProject.Application.Common.Exceptions;
 
 namespace BankLedger.WriteProject.Application.Handlers
 {
@@ -14,7 +14,7 @@ namespace BankLedger.WriteProject.Application.Handlers
         private readonly IEventStore _eventStore;
         private readonly IMessageBus _messageBus;
         private readonly ISnapshotStore _snapshotStore;
-
+        private const string StreamCategory = "BankAccount";
         public ForgetUserCommandHandler(ICryptoKeyVault keyVault, IEventStore eventStore, IMessageBus messageBus, ISnapshotStore snapshotStore)
         {
             _keyVault = keyVault;
@@ -49,7 +49,7 @@ namespace BankLedger.WriteProject.Application.Handlers
                 //var eventsToAppend = new List<BankEvent> { erasureEvent };
                 var eventsToPublish = account.UncommittedEvents.ToList();
 
-                await _eventStore.AppendEventsAsync(command.AccountId, account.Version, account.UncommittedEvents, cancellationToken);
+                await _eventStore.AppendEventsAsync(command.AccountId, StreamCategory,  account.Version, account.UncommittedEvents, cancellationToken);
                 await _keyVault.ShredKeyAsync(command.AccountId);
 
                 foreach (var @event in eventsToPublish)
@@ -63,7 +63,7 @@ namespace BankLedger.WriteProject.Application.Handlers
                 // Catch domain business rules violations
                 throw new ApplicationDomainException("Account Operation Rejected", ex.Message, 400);
             }
-            catch (Exception ex)
+            catch (Exception)
             {
                 throw new ApplicationDomainException(
                  "Internal System Error",

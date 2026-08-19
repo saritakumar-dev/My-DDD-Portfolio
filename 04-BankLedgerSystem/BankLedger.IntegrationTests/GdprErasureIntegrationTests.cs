@@ -7,6 +7,7 @@ using BankLedger.WriteProject.Application;
 using BankLedger.WriteProject.Application.Common;
 using BankLedger.WriteProject.Application.Handlers;
 using BankLedger.WriteProject.Infrastructure.Database;
+using Microsoft.Extensions.Logging;
 using Moq;
 using MySql.Data.MySqlClient;
 
@@ -22,16 +23,16 @@ namespace BankLedger.IntegrationTests
         private readonly Mock<IMessageBus> _messageBusMock;
         private readonly ICommandHandler<OpenAccountCommand> _openAccountCommandHandler;
         private readonly ICommandHandler<ForgetUserCommand> _forgetUserCommandhandler;
-
+        private readonly Mock<ILogger<MySqlEventStore>> _mockLogger;
         public GdprErasureIntegrationTests()
         {
             // Initialize infrastructure components
             _snapshotStore = new MySqlSnapshotStore(ConnectionString);
             _keyVault = new MySqlCryptoKeyVault(ConnectionString);
             _messageBusMock = new Mock<IMessageBus>();
-
+            _mockLogger = new Mock<ILogger<MySqlEventStore>>();
             // Wire the EventStore using the registered CryptoKeyVault wrapper
-            _eventStore = new MySqlEventStore(ConnectionString, _keyVault);
+            _eventStore = new MySqlEventStore(ConnectionString, _keyVault, _mockLogger.Object);
 
             // Initialize the handler under test
             _openAccountCommandHandler = new OpenAccountCommandHandler(_eventStore, _messageBusMock.Object);

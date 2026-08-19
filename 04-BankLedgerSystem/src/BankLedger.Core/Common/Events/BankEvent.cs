@@ -1,4 +1,5 @@
 ﻿
+using BankLedger.Domain.Aggregates;
 using BankLedger.Domain.Common;
 
 namespace BankLedger.Core.Common.Events
@@ -38,7 +39,7 @@ namespace BankLedger.Core.Common.Events
     {
         public decimal Amount { get; init; }
 
-        public string Currency { get; init; }
+        public string Currency { get; init; } = string.Empty;
 
         public string Reference { get; init; } = string.Empty;
 
@@ -56,7 +57,7 @@ namespace BankLedger.Core.Common.Events
     {
         public decimal Amount { get; init; }
 
-        public string Currency { get; init; }
+        public string Currency { get; init; } = string.Empty;
         public string Reference { get; init; } = string.Empty;
 
         public MoneyDepositedEvent() { }
@@ -74,7 +75,7 @@ namespace BankLedger.Core.Common.Events
     {
         public decimal Amount { get; init; }
 
-        public string Currency { get; init; }
+        public string Currency { get; init; } = string.Empty;
         public string Reference { get; init; } = string.Empty;
         public string Reason { get; init; } = string.Empty;
 
@@ -98,6 +99,19 @@ namespace BankLedger.Core.Common.Events
         {
             ErasedAt = DateTime.UtcNow;
             Reason = closureReason;
+        }
+    }
+
+    public record JournalEntryPostedEvent : BankEvent
+    {
+        public Guid JournalEntryId { get; init; }
+        public IReadOnlyCollection<LedgerEntry> LedgerEntries { get; init; }
+        public DateTime JournalEntryPostDateTime { get; init; }
+        public JournalEntryPostedEvent(Guid journalEntryId, IReadOnlyCollection<LedgerEntry> entries) : base(journalEntryId, 0)
+        {
+            JournalEntryId = journalEntryId;
+            LedgerEntries = entries;
+            JournalEntryPostDateTime = DateTime.UtcNow;
         }
     }
 }

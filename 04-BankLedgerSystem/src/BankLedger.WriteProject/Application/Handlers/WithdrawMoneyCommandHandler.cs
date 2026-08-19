@@ -4,7 +4,7 @@ using BankLedger.Core.Common.MessageBus;
 using BankLedger.Domain.Aggregates;
 using BankLedger.Domain.Common;
 using BankLedger.WriteProject.Application.Common;
-using BankLedger.WriteProject.Application.Exceptions;
+using BankLedger.WriteProject.Application.Common.Exceptions;
 
 namespace BankLedger.WriteProject.Application.Handlers
 {
@@ -14,6 +14,7 @@ namespace BankLedger.WriteProject.Application.Handlers
         private readonly IMessageBus _messageBus;
         private readonly ISnapshotStore _snapshotStore;
         private readonly int _snapshotInterval;
+        private const string StreamCategory = "Bank Account";
         public WithdrawMoneyCommandHandler(IEventStore eventStore, IMessageBus messageBus, ISnapshotStore snapshotStore,
             int snapshotInterval = 100)
         {
@@ -47,8 +48,8 @@ namespace BankLedger.WriteProject.Application.Handlers
                 account.Withdraw(command.Amount, command.Currency, command.Reference);
 
                 var eventsToPublish = account.UncommittedEvents.ToList();
-
-                await _eventStore.AppendEventsAsync(command.AccountId, account.Version, account.UncommittedEvents, cancellationToken);
+                        
+                await _eventStore.AppendEventsAsync(command.AccountId, StreamCategory, account.Version, account.UncommittedEvents, cancellationToken);
 
                 // Snapshot Evaluation and Creation Strategy
 

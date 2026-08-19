@@ -3,9 +3,8 @@ using BankLedger.Core.Common.Events;
 using BankLedger.Core.Common.MessageBus;
 using BankLedger.Domain.Aggregates;
 using BankLedger.Domain.Common;
-using BankLedger.WriteProject.Application;
 using BankLedger.WriteProject.Application.Common;
-using BankLedger.WriteProject.Application.Exceptions;
+using BankLedger.WriteProject.Application.Common.Exceptions;
 
 
 namespace BankLedger.WriteProject.Application.Handlers
@@ -54,7 +53,7 @@ namespace BankLedger.WriteProject.Application.Handlers
 
                 var eventsToPublish = account.UncommittedEvents.ToList();
 
-                await _eventStore.AppendEventsAsync(command.AccountId, account.Version, account.UncommittedEvents, cancellationToken);
+                await _eventStore.AppendEventsAsync(command.AccountId, "Bank Account", account.Version, account.UncommittedEvents, cancellationToken);
 
                 account.ClearUncommittedEvents();
 

@@ -11,9 +11,12 @@ namespace BankLedger.Domain.Aggregates
 
         public int Version { get; private set; }
 
-        public string CustomerName { get; private set; }
+        public string CustomerName { get; private set; } = string.Empty;
 
-        public Money Balance { get; private set; }
+        //In DDD, Money is a classic Value Object. Value Objects should never be null;
+        //they should represent an absolute value (even if that value is zero dollars or zero euros)
+        // Initializing to Money.Zero() satisfies the constructor safety check instantly!
+        public Money Balance { get; private set; } = Money.Zero();
 
         public bool IsClosed { get; private set; }
 
@@ -144,7 +147,7 @@ namespace BankLedger.Domain.Aggregates
                     Balance = Balance.Minus(new Money(e.Amount, e.Currency));
                     break;
                 case UserForgottenEvent e:
-                    IsClosed= true;
+                    IsClosed = true;
                     break;
             }
         }

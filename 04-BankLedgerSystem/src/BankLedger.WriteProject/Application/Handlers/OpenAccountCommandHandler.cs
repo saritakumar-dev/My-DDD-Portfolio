@@ -10,7 +10,7 @@ namespace BankLedger.WriteProject.Application.Handlers
     {
         private readonly IEventStore _eventStore;
         private readonly IMessageBus _messageBus;
-
+        private const string StreamCategory = "Bank Account";
         public OpenAccountCommandHandler(IEventStore eventStore, IMessageBus messageBus)
         {
             _eventStore = eventStore;
@@ -20,7 +20,7 @@ namespace BankLedger.WriteProject.Application.Handlers
         {
             var account = new BankAccount(command.AccountId, command.CustomerName, command.Currency);
             var eventsToPublish = account.UncommittedEvents.ToList();
-            await _eventStore.AppendEventsAsync(command.AccountId, account.Version, account.UncommittedEvents, cancellationToken);
+            await _eventStore.AppendEventsAsync(command.AccountId, StreamCategory, account.Version, account.UncommittedEvents, cancellationToken);
             account.ClearUncommittedEvents();
 
             // Broadcast to the generic bus.

@@ -10,7 +10,7 @@ namespace BankLedger.WriteProject.Domain.Aggregates
         public int Version { get; set; }
         public bool IsClosed { get; set; }
 
-        public Money Balance { get; set; }
+        public Money Balance { get; set; } = Money.Zero();
         public DateTime SnapshottedAt { get; set; }
     }
 }

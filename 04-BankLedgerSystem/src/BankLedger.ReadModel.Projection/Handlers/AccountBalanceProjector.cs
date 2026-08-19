@@ -3,21 +3,36 @@ using BankLedger.Core.Common;
 using BankLedger.Core.Common.Events;
 using BankLedger.ReadModel.Projection.Common.Models;
 using Microsoft.Azure.Cosmos;
+using Microsoft.Extensions.Logging;
+using Polly;
+using System.Net;
 
 namespace BankLedger.ReadModel.Projection.Handlers
 {
     public class AccountBalanceProjector : IDomainEventHandler<AccountOpenedEvent>,
                                            IDomainEventHandler<MoneyDepositedEvent>,
                                            IDomainEventHandler<MoneyWithdrawnEvent>,
-                                           IDomainEventHandler<UserForgottenEvent>
+                                           IDomainEventHandler<UserForgottenEvent>,
+                                            IDomainEventHandler<JournalEntryPostedEvent>
 
     {
         private readonly Container _container;
-
-        public AccountBalanceProjector(CosmosClient cosmosClient)
+        private readonly ILogger<AccountBalanceProjector> _logger;
+        private readonly AsyncPolicy _resiliencePolicy;
+        private readonly Container _poisonEventsContainer;
+        public AccountBalanceProjector(CosmosClient cosmosClient, ILogger<AccountBalanceProjector> logger)
         {
             _container = cosmosClient.GetContainer("BankLedgerReadDb", "Balances");
+            _logger = logger;
+            _resiliencePolicy = Policy
+            .Handle<CosmosException>(ex => ex.StatusCode == HttpStatusCode.PreconditionFailed)
+            .RetryAsync(retryCount: 3, onRetry: (exception, currentRetryCount) =>
+            {
+                _logger.LogWarning("Cosmos DB OCC conflict detected. Retry attempt {Count}/3...", currentRetryCount);
+            });
+            _poisonEventsContainer = cosmosClient.GetContainer("BankLedgerReadDb", "poisoned-events");
         }
+
         public async Task HandleAsync(AccountOpenedEvent @event, CancellationToken cancellationToken = default)
         {
             try

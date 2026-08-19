@@ -4,7 +4,7 @@ using BankLedger.Domain.Common;
 using FluentAssertions;
 namespace BankLedger.Domain.Tests
 {
-    public class BankAccountDomainTests
+    public class BankAccountTests
     {
         private readonly Guid accountId = Guid.NewGuid();
         private BankAccount CreateAccount(string currency = "EUR", string name = "John Doe")

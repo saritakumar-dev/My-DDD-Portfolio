@@ -7,6 +7,7 @@ using BankLedger.ReadModel.Projection.Handlers;
 using BankLedger.WriteProject.API.Middleware;
 using BankLedger.WriteProject.Application;
 using BankLedger.WriteProject.Application.Common;
+using BankLedger.WriteProject.Application.Common.Models;
 using BankLedger.WriteProject.Application.Handlers;
 using BankLedger.WriteProject.Application.Sagas;
 using BankLedger.WriteProject.Infrastructure.Database;
@@ -30,13 +31,15 @@ builder.Services.AddScoped<ICryptoKeyVault>(serviceProvider => new MySqlCryptoKe
 builder.Services.AddScoped<IEventStore>(serviceProvider =>
 {
     var keyVault = serviceProvider.GetRequiredService<ICryptoKeyVault>();
-    return new MySqlEventStore(connectionString, keyVault);
+    var logger = serviceProvider.GetRequiredService<ILogger<MySqlEventStore>>();
+    return new MySqlEventStore(connectionString, keyVault, logger);
 });
 builder.Services.AddScoped<ISagaStateRepository, SagaStateRepository>();
 builder.Services.AddScoped<ICommandHandler<OpenAccountCommand>, OpenAccountCommandHandler>();
 builder.Services.AddScoped<ICommandHandler<WithdrawMoneyCommand>, WithdrawMoneyCommandHandler>();
 builder.Services.AddScoped<ICommandHandler<DepositMoneyCommand>, DepositMoneyCommandHandler>();
 builder.Services.AddScoped<ICommandHandler<ForgetUserCommand>, ForgetUserCommandHandler>();
+builder.Services.AddScoped<ICommandHandler<PostJournalEntryCommand>, PostJournalEntryCommandHandler>();
 
 builder.Services.AddScoped<IMessageBus, InMemoryMessageBus>();
 builder.Services.AddScoped<MoneyTransferSaga>();
@@ -54,6 +57,8 @@ builder.Services.AddScoped<AccountBalanceProjector>();
 builder.Services.AddScoped<IDomainEventHandler<AccountOpenedEvent>>(sp => sp.GetRequiredService<AccountBalanceProjector>());
 builder.Services.AddScoped<IDomainEventHandler<MoneyDepositedEvent>>(sp => sp.GetRequiredService<AccountBalanceProjector>());
 builder.Services.AddScoped<IDomainEventHandler<MoneyWithdrawnEvent>>(sp => sp.GetRequiredService<AccountBalanceProjector>());
+builder.Services.AddScoped<IDomainEventHandler<JournalEntryPostedEvent>>(sp => sp.GetRequiredService<AccountBalanceProjector>());
+builder.Services.AddScoped<IAccountReadModelService, CosmosAccountReadModelService>();
 
 builder.Services.AddProblemDetails();
 builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
@@ -124,38 +129,6 @@ app.MapPost("/api/deposit", async (
 .Produces(StatusCodes.Status202Accepted)
 .Produces(StatusCodes.Status400BadRequest);
 
-//TODO : Should we add a withdrawal here?
-
-app.MapPost("/api/transfer", async (
-    TransferRequest request,
-    MoneyTransferSaga saga,
-    CancellationToken cancellationToken) =>
-{
-    if (request.SourceAccountId == request.TargetAccountId)
-    {
-        return Results.BadRequest("Source and Target accounts cannot be the same.");
-    }
-
-    if (request.Amount <= 0)
-    {
-        return Results.BadRequest("Transfer amount must be greater than zero.");
-    }
-
-    await saga.StartAsync(
-        request.SourceAccountId,
-        request.TargetAccountId,
-        request.Amount,
-        request.Currency,
-        cancellationToken
-    );
-
-    return Results.Accepted();  //TODO : what should be standard return values here
-})
-.WithName("InitiateTransfer")
-.WithOpenApi()
-.Produces(StatusCodes.Status202Accepted) // Explicitly state the responses for Swashbuckle
-.Produces(StatusCodes.Status400BadRequest);
-
 app.MapPost("/api/deleteaccount", async ([FromBody] DeleteAccountRequest request,
                                             [FromServices] ICommandHandler<ForgetUserCommand> handler,
                                             CancellationToken cancellationToken) =>
@@ -168,6 +141,24 @@ app.MapPost("/api/deleteaccount", async ([FromBody] DeleteAccountRequest request
     return Results.Accepted(); //TODO : what should be standard return values here
 });
 
+app.MapPost("api/jounalentrytransfer", async (MoneyTransferRequest request,
+                                              MoneyTransferSaga saga,
+                                              CancellationToken cancellationToken) =>
+{
+    if (request == null || request.Instructions == null || request.Instructions.Count < 2)
+        return Results.BadRequest("Invalid Inputs");
+    var moneyTransferInstructions = request.Instructions.Select(i => new MoneyTransferInstruction(i.AccountId, i.Amount, i.Description)).ToList();
+
+    await saga.StartAsync(moneyTransferInstructions, cancellationToken);
+
+    return Results.Accepted();
+})
+.WithName("jounalentrytransfer")
+.WithOpenApi()
+.Produces(StatusCodes.Status202Accepted) // Explicitly state the responses for Swashbuckle
+.Produces(StatusCodes.Status400BadRequest);
+
+
 app.Run();
 
 
@@ -178,3 +169,7 @@ public record DepositMoneyRequest(Guid AccountId, decimal Amount, string Currenc
 public record TransferRequest(Guid SourceAccountId, Guid TargetAccountId, decimal Amount, string Currency);
 
 public record DeleteAccountRequest(Guid AccountId, ClosureReason ClosureReason);
+
+public record MoneyTransferRequest(List<Instruction> Instructions, string Currency);
+
+public record Instruction(Guid AccountId, decimal Amount, string Description);

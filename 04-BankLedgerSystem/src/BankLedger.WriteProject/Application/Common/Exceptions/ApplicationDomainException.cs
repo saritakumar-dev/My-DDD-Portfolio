@@ -1,4 +1,4 @@
-﻿namespace BankLedger.WriteProject.Application.Exceptions
+﻿namespace BankLedger.WriteProject.Application.Common.Exceptions
 {
     public class ApplicationDomainException : Exception
     {

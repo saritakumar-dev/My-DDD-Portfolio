@@ -33,6 +33,7 @@ builder.Services.AddScoped<IDomainEventHandler<AccountOpenedEvent>>(sp => sp.Get
 builder.Services.AddScoped<IDomainEventHandler<MoneyDepositedEvent>>(sp => sp.GetRequiredService<AccountBalanceProjector>());
 builder.Services.AddScoped<IDomainEventHandler<MoneyWithdrawnEvent>>(sp => sp.GetRequiredService<AccountBalanceProjector>());
 builder.Services.AddScoped<IDomainEventHandler<UserForgottenEvent>>(sp=>sp.GetRequiredService<AccountBalanceProjector>());
+builder.Services.AddScoped<IDomainEventHandler<JournalEntryPostedEvent>>(sp => sp.GetRequiredService<AccountBalanceProjector>());
 
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();

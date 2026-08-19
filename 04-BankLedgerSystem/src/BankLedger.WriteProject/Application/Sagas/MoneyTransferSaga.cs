@@ -1,6 +1,10 @@
 ﻿using BankLedger.Core.Common;
 using BankLedger.Core.Common.Events;
+using BankLedger.Domain.Aggregates;
+using BankLedger.Domain.Common;
 using BankLedger.WriteProject.Application.Common;
+using BankLedger.WriteProject.Application.Common.Exceptions;
+using BankLedger.WriteProject.Application.Common.Models;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace BankLedger.WriteProject.Application.Sagas
@@ -10,28 +14,48 @@ namespace BankLedger.WriteProject.Application.Sagas
                                      IDomainEventHandler<DepositMoneyFailedEvent>
     {
         private readonly ISagaStateRepository _sagaStateRepository;
+        private readonly IAccountReadModelService _accountReadModelService;
         private readonly IServiceProvider _serviceProvider;
 
         public MoneyTransferSaga(IServiceProvider serviceProvider,
-            ISagaStateRepository sagaStateRepository)
+            ISagaStateRepository sagaStateRepository, IAccountReadModelService accountReadModelService)
         {
             _serviceProvider = serviceProvider;
             _sagaStateRepository = sagaStateRepository;
-        }
-        public async Task StartAsync(Guid sourceAccountId, Guid targetAccountId, decimal amount, string currency, CancellationToken cancellationToken)
-        {
-            var sagaState = new MoneyTransferSagaState
-            {
-                SourceAccountId = sourceAccountId,
-                TargetAccountId = targetAccountId,
-                Amount = amount,
-                CurrentState = TransferWorkflowState.WithdrawalStarted
-            };
-            await _sagaStateRepository.SaveAsync(sagaState, cancellationToken);
-            var withdrawHandler = _serviceProvider.GetRequiredService<ICommandHandler<WithdrawMoneyCommand>>();
-            await withdrawHandler.HandleAsync(new WithdrawMoneyCommand(sourceAccountId, amount, currency, $"Transfer out to {targetAccountId} | SagaId: {sagaState.SagaId}"), cancellationToken);
+            _accountReadModelService = accountReadModelService;
         }
 
+        public async Task StartAsync(List<MoneyTransferInstruction> instructions, CancellationToken cancellationToken)
+        {
+            var uniqueAccountIds = instructions.Select(x => x.AccountId).Distinct().ToList();
+
+            var lookupTasks = (uniqueAccountIds.Select(accountId =>
+                            _accountReadModelService.GetAccountStateResultAsync(accountId, cancellationToken)).ToList());
+
+            await Task.WhenAll(lookupTasks);
+
+            var accountStates = uniqueAccountIds
+                                .Zip(lookupTasks, (id, task) => new { id, task.Result })
+                                .ToDictionary(x => x.id, x => x.Result);
+
+            // Group all instructions by AccountId and sum up their total net amount impact
+            var accountNetImpacts = instructions
+                .GroupBy(i => i.AccountId)
+                .ToDictionary(g => g.Key, g => g.Sum(i => i.Amount));
+
+
+            foreach (var keyValuePair in accountNetImpacts)
+            {
+                var accountState = accountStates[keyValuePair.Key];
+                if (accountState.IsClosed) throw new AccountDeactivatedException(accountState.AccountId);
+
+                if (keyValuePair.Value < 0 && accountState.CurrentBalance < Math.Abs(keyValuePair.Value)) throw new InsufficientFundsException(accountState.AccountId, accountState.CurrentBalance, Math.Abs(keyValuePair.Value));
+            }
+
+            var transactionLegs = instructions.Select(i => new LedgerEntry(i.AccountId, i.Amount, i.Description)).ToList();
+            var journalEntryCommandHandler = _serviceProvider.GetRequiredService<ICommandHandler<PostJournalEntryCommand>>();
+            await journalEntryCommandHandler.HandleAsync(new PostJournalEntryCommand(Guid.NewGuid(), transactionLegs), cancellationToken);
+        }
         public async Task HandleAsync(MoneyWithdrawnEvent @event, CancellationToken cancellationToken)
         {
             Guid sagaId = ExtractSagaIdFromReference(@event.Reference);
