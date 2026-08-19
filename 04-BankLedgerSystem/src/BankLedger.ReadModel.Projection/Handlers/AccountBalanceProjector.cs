@@ -125,5 +125,75 @@ namespace BankLedger.ReadModel.Projection.Handlers
                 Console.WriteLine($"Key {id} was not found");
             }
         }
+
+        public async Task HandleAsync(JournalEntryPostedEvent @event, CancellationToken cancellationToken)
+        {
+            try
+            {
+                foreach (var leg in @event.LedgerEntries)
+                {
+                    await _resiliencePolicy.ExecuteAsync(async () =>
+                    {
+                        var id = leg.AccountId.ToString();
+                        var partitionKey = new PartitionKey(id);
+
+                        var itemResponse = await _container.ReadItemAsync<AccountBalanceDocument>(id, partitionKey, cancellationToken: cancellationToken);
+
+                        var accountBalanceDocument = itemResponse.Resource;
+
+                        accountBalanceDocument.CurrentBalance += leg.Amount;
+
+                        await _container.ReplaceItemAsync(accountBalanceDocument,
+                            id,
+                            partitionKey,
+                            new ItemRequestOptions { IfMatchEtag = itemResponse.ETag },
+                            cancellationToken: cancellationToken);
+                    });
+                }
+            }
+            catch (Exception ex)
+            {
+                // This block triggers ONLY if Polly exhausts all 3 retries and still fails
+                _logger.LogCritical(ex, "CRITICAL: Event {EventId} failed to project after 3 retries. Admin notification triggered.", @event.JournalEntryId);
+
+                // Invoke your administrative alert workflow here (e.g., writing to an AuditAlerts collection)
+                await SaveToPoisonQueueAsync(@event, ex);
+
+                // DO NOT rethrow the exception here! 
+                // Swallowing it safely lets the event subscription advance to the next event.
+            }
+        }
+
+        
+
+        private async Task SaveToPoisonQueueAsync(JournalEntryPostedEvent @event, Exception ex)
+        {
+            // Simple internal persistence trick: store the un-projectable event payload 
+            // into a separate CosmosDB container named "PoisonedEvents" for manual admin review.
+            try
+            {
+                var poisonDoc = new PoisonEventDocument
+                {
+                    Id = Guid.NewGuid().ToString(),
+                    StreamId = "journalentry-{@event.JournalEntryId}",
+                    EventType = nameof(JournalEntryPostedEvent),
+                    ErrorMessage = ex.Message,
+                    StackTrace = ex.StackTrace ?? "No stack trace available",
+                    RawEventPayload = @event,
+                    LoggedAt = DateTime.UtcNow,
+                };
+
+                var itemResponse = await _poisonEventsContainer.CreateItemAsync<PoisonEventDocument>(poisonDoc, new PartitionKey(poisonDoc.StreamId), cancellationToken: default);
+
+                var itemDocument = itemResponse.Resource;
+            }
+            catch (Exception poisonDBEx)
+            {
+                // Fail-Safe Net: If even the poison log database fails (e.g. Cosmos DB is completely down),
+                // fallback to your system logger so the event is NEVER silently swallowed into total darkness.
+                _logger.LogCritical(poisonDBEx, "FATAL ERROR: Failed to write event {@EventId} to the Cosmos DB Poison Container.", @event.JournalEntryId);
+
+            }
+        }
     }
 }
