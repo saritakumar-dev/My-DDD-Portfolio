@@ -1,137 +1,148 @@
-# 🏛️ BankLedgerSystem (Phase 1)
+# BankLedger System
 
-An enterprise-grade, high-performance financial ledger system built using **Domain-Driven Design (DDD)**, an **Append-Only Event Store**, and **Command-Query Responsibility Segregation (CQRS)** boundaries. 
+A secure, immutable, and high-throughput financial ledger system designed to track balances and transactions.
 
-This project demonstrates production-ready strategies for maintaining absolute data integrity and extreme write throughput without the overhead of heavy ORM engines or monolithic third-party frameworks.
+## Features
+* **Event Sourcing**: Records all account changes as an immutable sequence of events, ensuring a perfect historical record. 
+* **CQRS Architecture**: Separates the write-heavy ledger transactions (MySQL) from high-speed read queries (Cosmos DB).
+* **Double-Entry Bookkeeping**: Ensures financial accuracy and zero-sum balancing across all accounts.
+* **Debit / Credit Transactions**: Supports secure deposits, withdrawals, and balance transfers for individual accounts.
+* **Idempotency**: Prevents duplicate transaction processing and accidental double-spend events.
+* **Snapshot Pattern**: Optimizes performance by reducing account history replay time from $O(N)$ to $O(1)$.
+* **Immutable Audit Trail**: Maintains a permanent, chronological log of all balance changes for compliance tracking.
+* **GDPR Compliance**: Protects user privacy with data minimization and secure "right to be forgotten" handling for personal records.
+* **GoBD Compliance**: Meets strict European (German) requirements for immutable, orderly, and verifiable digital record-keeping.
 
----
+## Project Structure 
+The repository follows Domain-Driven Design (DDD) and Clean Architecture principles: 
 
-## 🗺️ Project Roadmap & Evolutionary Architecture
+```text 
+src/ 
+├── BankLedger.Domain/                     # Aggregates, Entities, Value Objects, Domain Events, Exceptions
+├── BankLedger.WriteProject.Application/   # CQRS Commands, Event Handlers, Bus/DB Interfaces, Sagas, Factories
+├── BankLedger.WriteProject.Infrastructure/# MySQL Event Store, InMemoryMessageBus, DbContext, Repositories
+├── BankLedger.WriteProject.API/           # Write API, Thin Controllers, Middleware (HTTP 202)
+├── BankLedger.ReadModel.Projection/       # Cosmos DB Projections, Background Workers, Polly Resilience
+└── BankLedger.ReadModel.API/              # Read API, Minimal API Balances/Queries Gateway
 
-To simulate a real-world enterprise system expansion, this repository follows a strict multi-phase rollout matrix:
-
-### 🚀 Phase 1 (Current Active Commit): High-Performance In-Process Core
-*   **Focus:** Strong data integrity, low-latency event ingestion, and strict aggregate boundary enforcement.
-*   **Storage Execution:** Pure, native ADO.NET with storage-level Optimistic Concurrency Control (OCC).
-*   **Process Coordination:** Stateful application-layer Saga state machine tracking with inline handler dispatching.
-
-### 🔮 Phase 2 (Future Work): Distributed Scale & Read Optimization
-*   **Focus:** Deconstructing the write side via out-of-process messaging and horizontal scaling.
-*   **Planned Changes:** Offloading inbound commands to distributed message brokers (RabbitMQ/Kafka) and projecting asynchronous, denormalized read-models into a fast cache tier (Redis/NoSQL).
-
-*   ### 🛠️ Deep Technical Troubleshooting Logs
-* Read our post-mortem analysis on how we resolved [Asynchronous Event Inversion & Scope Corruption](./Troubleshooting_Chronological_Inversion.md) inside the custom message bus.
-
-
-### 🚀 Current Constraints & Architectural Roadmap
-
-* **Current Implementation State:** Phase 1 uses an explicit, transactional, in-process checkpointing Saga framework.
-* **The Failure Boundary:** If a sudden power termination or container crash occurs exactly after the MySQL withdrawal transaction commits but prior to the inline deposit command dispatch, the transaction sequence remains stored in a `WithdrawalStarted` state checklist row.
-* **Roadmap Phase 3 Resolution:** The system is explicitly designed with clean interface boundaries to support an evolutionary architecture. In the next phase, we will introduce **Azure Service Bus Topics** coupled with a **Transactional Outbox database pattern**. This will completely decouple the steps, ensuring that if a process dies mid-flight, the messaging system will guarantee atomic retries and complete the transfer automatically upon container restoration.
-
----
-
-## 📂 System Architecture & Directory Layout
-
-The physical folder structure enforces a dependency flow that looks strictly inward toward the domain layer:
-
-```text
-📂 04-BankLedgerSystem
- ┣ 📂 docs/adr/                      # Formal Architectural Decision Records (ADRs 0001-0005)
- ┣ 📂 src/
- ┃ ┣ 📂 BankLedger.Core              # Pure Bounded Domain Context (Aggregates, Invariants, Events)
- ┃ ┣ 📂 BankLedger.WriteProject      # Application Core (Explicit Command Handlers, Stateful Saga)
- ┃ ┗ 📂 BankLedger.WriteProject.API  # Transport Infrastructure Adapter (Thin Controllers, HTTP 202)
- ┣ 📂 tests/                         # Isolated xUnit Testing Suites
- ┗ 📜 BankLedgerSystem.sln           # Phase 1 Target-Only Compilation Reference
+tests/ 
+├── BankLedger.Domain.Tests/               # Unit tests for Domain logic & invariant boundaries
+├── BankLedger.Application.Tests/          # Unit tests for Sagas & workflow state machines
+├── BankLedger.ReadModel.Tests/            # Unit tests for Read-Model queries
+└── BankLedger.IntegrationTests/           # E2E tests for MySQL, Cosmos DB, and Concurrency (Error 1062)
 ```
-
----
 
 ## 🏛️ Architectural Decision Records (ADR Registry)
 
-Every architectural choice in this system is deliberately selected to manage real hardware and database constraints. Read the deep-dive technical reasoning behind each decision:
+Every critical technical choice in this financial ledger is explicitly tracked to document how we manage hardware, storage, and consistency boundaries. 
 
 | ID | Key Architectural Decision | Core Engineering Focus Area | Status |
 | :--- | :--- | :--- | :--- |
-| **[ADR-0001](./docs/adr/ADR-0001-optimistic-concurrency.md)** | Storage-Level OCC via MySQL Unique Constraints (Error 1062) | Data Integrity & Lock Reduction | ✅ Phase 1 Active |
-| **[ADR-0002](./docs/adr/ADR-0002-saga-orchestration.md)** | Stateful Saga Orchestration for Cross-Aggregate Transfers | Eventual Consistency Matrix | ✅ Phase 1 Active |
-| **[ADR-0003](./docs/adr/ADR-0003-static-factory-reconstitution.md)** | Aggregates Invariant Protection via Static Factory Methods | Memory-State Protection | ✅ Phase 1 Active |
-| **[ADR-0004](./docs/adr/ADR-0004-transport-core-decoupling.md)** | Transport-Core Decoupling via Direct Command Handlers | Clean Architecture Boundaries | ✅ Phase 1 Active |
-| **[ADR-0005](./docs/adr/ADR-0005-not-using-orm-for-event-store.md)** | Eliminating ORM Frameworks in Favor of Native ADO.NET | Memory & High Throughput Optimization | ✅ Phase 1 Active |
+| **[ADR-0001](./docs/adr/ADR-0001-optimistic-concurrency.md)** | Storage-Level OCC via MySQL Unique Key Constraints | Relational Data Integrity | ✅ Active |
+| **[ADR-0002](./docs/adr/ADR-0002-saga-orchestration.md)** | Stateful Saga Orchestration for Cross-Aggregate Transfers | Eventual Consistency Matrix | ⚠️ Superseded by ADR-0009 |
+| **[ADR-0003](./docs/adr/ADR-0003-static-factory-reconstitution.md)** | Aggregates Invariant Protection via Static Factory Methods | Memory-State Protection | ✅ Active |
+| **[ADR-0004](./docs/adr/ADR-0004-transport-core-decoupling.md)** | Transport-Core Decoupling via Direct Command Handlers | Clean Architecture Boundaries | ✅ Active |
+| **[ADR-0005](./docs/adr/ADR-0005-not-using-orm-for-event-store.md)** | Eliminating ORM Frameworks in Favor of Native ADO.NET | Memory & High Throughput Optimization | ✅ Active |
+| **[ADR-0006](./docs/adr/ADR-0006-performance-snapshots.md)** | Performance Optimization via State Snapshots | Aggregation Hydration Bottlenecks | ✅ Active |
+| **[ADR-0007](./docs/adr/ADR-0007-gdpr-crypto-shredding.md)** | GDPR Compliance via Crypto-Shredding Patterns | Data Privacy & Immutability Coexistence | ✅ Active |
+| **[ADR-0008](./docs/adr/ADR-0008-money-value-object.md)** | Domain Integrity via Money Value Object | Floating-Point Precision Protection | ✅ Active |
+| **[ADR-0009](./docs/adr/ADR-0009-atomic-ledger-boundary.md)** | Moving from Distributed Sequential Steps to an Atomic Ledger Boundary | Absolute Relational Transaction Isolation | ✅ Active |
 
----
-
-## ⚡ Technical Highlights From The Implementation
-
-### 1. Zero ORM Overhead in the Ingestion Path
-Unlike traditional CRUD state tracking, the event store uses an append-only sequence pattern. Rather than loading Entity Framework Core—which introduces reflection penalties, object change tracking overhead, and unnecessary Garbage Collector pressure—the write pipeline uses **native ADO.NET (`DbCommand`)**. Events are flushed using raw parameterized scripts directly to the database connection socket via `ExecuteNonQueryAsync`.
-
-### 2. Lockless Concurrency Safety
-The engine avoids heavy database range/gap locking penalties under high-frequency writes by lowering transaction limits down to `ReadCommitted`. Concurrency race conditions are handled deterministically at the database index layer using a composite unique key constraint on `(AggregateId, Version)`. If a conflict occurs:
-* The database engine throws error code **`1062` (Duplicate Entry)**.
-* The low-level infrastructure catches it natively (`ex.Number == 1062`).
-* An explicit `await transaction.RollbackAsync()` is dispatched.
-* A clear application-level `InvalidOperationException` bubbles up safely.
-
-### 3. Stateful Process Orchestration
-Cross-account transfers are handled entirely by an asynchronous application-layer Saga state machine (`MoneyTransferSaga`). The system listens for aggregate events, correlates tracking indices via a unique tracking string (`sagaId`), hydrates tracking entities using a dedicated state repository, and drives the workflow forward through explicit state transitions using custom command handlers. This approach preserves absolute aggregate isolation while replacing traditional distributed two-phase database locks (2PC) with non-blocking eventual consistency.
-
----
-
-## 🧪 Test Automation & Domain Invariant Verification
-
-Because the core domain logic is entirely decoupled from external frameworks and database drivers, the system is fully testable. The testing matrix uses xUnit and FluentAssertions to validate constraints without mocking overhead where possible.
-
-### 1. Domain Layer Invariant Testing (`tests/BankLedger.Domain.Tests`)
-*   **Focus:** Core business rules, bounds checking, and failure state consistency.
-*   **Key Coverage:** 
-    *   Verifying negative or zero-dollar transaction attempts immediately throw custom domain exceptions.
-    *   Ensuring overdraft limits are strictly enforced inside the aggregate root memory before events are generated.
-    *   Validating that historical event replay sequences reconstitute a mathematically perfect account state.
-
-### 2. Application Layer Workflow Testing (`tests/BankLedger.Application.Tests`)
-*   **Focus:** Saga state machine transitions and command handler routing.
-*   **Key Coverage:**
-    *   Asserting that `MoneyTransferSaga` rejects out-of-order events using explicit state machine guard clauses.
-    *   Verifying that successful withdrawal events automatically trigger and route the downstream deposit command via explicit handlers.
-
-### 3. Infrastructure Exception Mapping (`tests/BankLedger.Infrastructure.Tests`)
-*   **Focus:** Storage optimization verification.
-*   **Key Coverage:**
-    *   Validating that the low-level ADO.NET Event Store accurately intercepts MySQL Error `1062` and transforms it into an application-level `InvalidOperationException` for concurrency management.
-
----
-
-### Performance Optimization: Snapshot Pattern
-
-To prevent an $O(N)$ performance bottleneck during aggregate state reconstruction from the immutable event store stream, this system implements a State Snapshotting optimization.
-
-#### Architectural Mechanics:
-1. **Automated Serialization**: During command handling execution, if an aggregate's version crosses a designated threshold interval ($Version \pmod{100} == 0$), a flat state checkpoint is generated.
-2. **High-Throughput Storage**: The checkpoint is persisted to a dedicated MySQL `BankAccountSnapshots` table using highly-optimized, low-overhead native ADO.NET query commands.
-3. **Delta Catch-Up Stream**: When a command handler initializes an aggregate lookup, it executes an $O(1)$ query to retrieve the absolute latest snapshot. If a snapshot is resolved (e.g., at Version 100), the repository initializes the aggregate at that point-in-time and executes a highly targetted event store index lookup (`Version > 100`) to replay only the trailing delta event stream.
-
-This ensures constant-time execution paths ($O(1)$ database read metrics) independent of the historical transaction volume or aggregate lifespan.
-
----
-
-## 🛠️ Local Development & Quick Start
+## Getting Started
 
 ### Prerequisites
-*   .NET 8.0 SDK or newer
-*   MySQL Database Server Instance
+* **Language / Runtime**: .NET 8 SDK
+* **Primary Database**: MySQL 8.0+ (Relational store for ledger accounts)
+* **Read-Model Database**: Azure Cosmos DB (NoSQL store for CQRS query side)
+* **Message Broker**: In-Memory Bus 
+* **Resilience Framework**: Polly (For exponential backoff and retry strategies)
 
-### Setup and Compilation
-1. Restore your application package dependencies:
+
+### Installation
+1. Clone the repository:
    ```bash
-   dotnet restore BankLedgerSystem.sln
+   git clone https://github.com/saritakumar-dev/My-DDD-Portfolio.git
+   cd 04-BankLedgerSystem
    ```
-2. Build the Phase 1 system locally:
+2. Configure environment variables:
    ```bash
-   dotnet build BankLedgerSystem.sln --configuration Release
+   cp .env.example .env
    ```
-3. Execute the automated validation and invariant testing suites:
+3. Run migrations:
    ```bash
-   dotnet test BankLedgerSystem.sln
+   # Add your migration command here
    ```
+
+### Running the Application
+
+To execute the full CQRS loop locally, both the Write and Read API applications must be active simultaneously. Open two separate terminal windows or use Visual Studio's Multi-Project Startup feature:
+
+**Window 1: Start the Write API (Command Side)**
+```bash
+dotnet run --project src/BankLedger.WriteProject.API
+```
+
+**Window 2: Start the Read API (Query Side)**
+```bash
+dotnet run --project src/BankLedger.ReadModel.API
+```
+## API Documentation
+
+The system completely decouples operations by separating endpoints into two physically isolated API services following strict CQRS patterns.
+
+### 🟢 1. Command Service (Write Side)
+* **Project Boundary**: `src/BankLedger.WriteProject.API/`
+* **Local Hosting Port**: `http://localhost:5100/swagger`
+* **Endpoints**:
+  * `POST /api/accounts` - Opens a new Bank Account and initializes the append-only event stream.
+  * `POST /api/deposits` - Processes money deposits using low-level ADO.NET and storage-level OCC.
+  * `POST /api/deleteaccount` - Closes the Bank Account (emits an account-closed event to maintain immutable history).
+  * `POST /api/jounalentrytransfer` - Posts a new balanced double-entry Journal Entry Transfer transaction.
+
+### 🔵 2. Query Service (Read Side)
+* **Project Boundary**: `src/BankLedger.ReadModel.API/`
+* **Local Hosting Port**: `http://localhost:5292/swagger`
+* **Endpoints**:
+  * `GET /api/balances/{id}` - Fetches the denormalized, up-to-date calculated account balance directly from Azure Cosmos DB.
+
+## Running Tests
+
+The test suite validates domain invariants, consistency boundaries, distributed workflow states, and compliance rules using a distinct unit and integration testing strategy.
+
+### Test Stack
+* **Framework**: xUnit
+* **Mocking Engine**: Moq
+* **Assertions**: FluentAssertions
+
+### Execute Complete Test Suite
+```bash
+dotnet test
+```
+
+### Targeted Test Projects Execution
+
+* **Core Domain Invariants (`tests/BankLedger.Domain.Tests/`)**
+  Validates pure aggregate boundary rules, currency precision tracking, and memory-state protection logic without hitting external databases.
+  ```bash
+  dotnet test tests/BankLedger.Domain.Tests
+  ```
+
+* **Workflow & Saga State Transitions (`tests/BankLedger.Application.Tests/`)**
+  Verifies `MoneyTransferSaga` lifecycle state checks, message routing patterns, and SagaParser processing logic.
+  ```bash
+  dotnet test tests/BankLedger.Application.Tests
+  ```
+
+* **Read-Model Projections (`tests/BankLedger.ReadModel.Tests/`)**
+  Validates `AccountBalanceProjector` tracking rules and Cosmos DB state generation accuracy.
+  ```bash
+  dotnet test tests/BankLedger.ReadModel.Tests
+  ```
+
+* **Infrastructure & Integration Verification (`tests/BankLedger.IntegrationTests/`)**
+  Executes end-to-end loops verifying `MySqlEventStore` concurrency logic (Error 1062 tracking), `SnapshotPattern` execution speeds, and `GdprErasure` compliance routines.
+  ```bash
+  dotnet test tests/BankLedger.IntegrationTests
+  ```
+## License
+Distributed under the MIT License. See `LICENSE` for more information.
